@@ -1,0 +1,373 @@
+-- =====================================================================
+-- HARDCODED CUSTOM UI BY KIETDEPZAI (ORANGE THEME)
+-- UI THUẦN TỰ LÀM 100% - KHÔNG LẤY THƯ VIỆN CỦA AI - DỄ DÀNG TỰ CO ĐÃN NÂNG CẤP
+-- =====================================================================
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+local SoundService = game:GetService("SoundService")
+
+-- 1. ÂM THANH KHI BẤM CHỌN (Sử dụng ID âm thanh click hệ thống sắc nét)
+local clickSound = Instance.new("Sound")
+clickSound.SoundId = "rbxassetid://8536034151" 
+clickSound.Volume = 1
+clickSound.Parent = SoundService
+
+-- =====================================================================
+-- 2. KHU VỰC CẤU HÌNH SCRIPT & GHI CHÚ (CÓ THỂ THÊM PHẦN SAU NÀY TẠI ĐÂY)
+-- Muốn thêm V5, V6... chỉ cần copy cấu trúc rồi paste thêm vào bảng dưới đây
+-- =====================================================================
+local HubScripts = {
+    {
+        ID = "V1",
+        Name = "KIETDEPZAI HUB V1",
+        Note = "Ghi chú: Bản No-Key, Ui siêu mượt, hỗ trợ máy yếu farm ngon.",
+        ScriptFunction = function()
+            -- [NHẬP SCRIPT V1 CỦA BẠN VÀO GIỮA ĐÂY]
+            print("-> Đã kích hoạt lõi Script V1 thành công!")
+            
+            -- Ví dụ: loadstring(game:HttpGet("link_script_v1_cua_ban"))()
+        end
+    },
+    {
+        ID = "V2",
+        Name = "KIETDEPZAI HUB V2",
+        Note = "Ghi chú: Auto Farm quái cấp tốc, tự gom quái cực đỉnh.",
+        ScriptFunction = function()
+            -- [NHẬP SCRIPT V2 CỦA BẠN VÀO GIỮA ĐÂY]
+            print("-> Đã kích hoạt lõi Script V2 thành công!")
+            
+        end
+    },
+    {
+        ID = "V3",
+        Name = "KIETDEPZAI HUB V3",
+        Note = "Ghi chú: Bản nâng cao bypass anti-cheat, tối ưu hóa FPS.",
+        ScriptFunction = function()
+            -- [NHẬP SCRIPT V3 CỦA BẠN VÀO GIỮA ĐÂY]
+            print("-> Đã kích hoạt lõi Script V3 thành công!")
+            
+        end
+    },
+    {
+        ID = "V4",
+        Name = "KIETDEPZAI HUB V4",
+        Note = "Ghi chú: Tính năng VIP, Auto Raid, Auto Boss siêu tốc.",
+        ScriptFunction = function()
+            -- [NHẬP SCRIPT V4 CỦA BẠN VÀO GIỮA ĐÂY]
+            print("-> Đã kích hoạt lõi Script V4 thành công!")
+            
+        end
+    },
+    -- Bạn có thể viết thêm dấu phẩy rồi thêm các mục V5, V6 tùy thích vào đây...
+}
+
+-- Biến lưu trữ phiên bản đang được chọn hiện tại
+local currentSelectedIdx = nil
+
+-- =====================================================================
+-- 3. KHỞI TẠO FRAMEWORK ĐỒ HỌA GIAO DIỆN (UI)
+-- =====================================================================
+local ScreenGui = Instance.new("ScreenGui")
+if getgui then ScreenGui.Parent = getgui()
+elseif syn and syn.protect_gui then syn.protect_gui(ScreenGui); ScreenGui.Parent = CoreGui
+else ScreenGui.Parent = CoreGui or LocalPlayer:WaitForChild("PlayerGui") end
+ScreenGui.Name = "KietDepZai_CustomHub"
+ScreenGui.ResetOnSpawn = false
+
+-- THÔNG BÁO NHẢY LÊN (Custom Toast Notification System)
+local function CreateNotification(text)
+    local NotifFrame = Instance.new("Frame")
+    local NotifCorner = Instance.new("UICorner")
+    local NotifText = Instance.new("TextLabel")
+    
+    NotifFrame.Size = UDim2.new(0, 240, 0, 40)
+    NotifFrame.Position = UDim2.new(1, 20, 0.85, 0) -- Xuất phát ngoài màn hình bên phải
+    NotifFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    NotifFrame.BorderColor3 = Color3.fromRGB(255, 102, 0)
+    NotifFrame.BorderSizePixel = 1
+    NotifFrame.Parent = ScreenGui
+    
+    NotifCorner.CornerRadius = UDim.new(0, 6)
+    NotifCorner.Parent = NotifFrame
+    
+    NotifText.Size = UDim2.new(1, 0, 1, 0)
+    NotifText.BackgroundTransparency = 1
+    NotifText.Font = Enum.Font.GothamBold
+    NotifText.TextColor3 = Color3.fromRGB(255, 102, 0) -- Màu cam nổi bật
+    NotifText.TextSize = 13
+    NotifText.Text = text
+    NotifText.Parent = NotifFrame
+    
+    -- Animation bay vào từ bên phải
+    NotifFrame:TweenPosition(UDim2.new(1, -260, 0.85, 0), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.4, true)
+    
+    -- Tự động bay đi mất sau 2.5 giây
+    task.delay(2.5, function()
+        NotifFrame:TweenPosition(UDim2.new(1, 20, 0.85, 0), Enum.EasingDirection.In, Enum.EasingStyle.Quart, 0.4, true, function()
+            NotifFrame:Destroy()
+        end)
+    end)
+end
+
+-- =====================================================================
+-- 4. GIAO DIỆN CHÍNH (MAIN MENU)
+-- =====================================================================
+local MainFrame = Instance.new("Frame")
+local MainCorner = Instance.new("UICorner")
+local TopBar = Instance.new("Frame")
+local TopBarCorner = Instance.new("UICorner")
+local TitleLabel = Instance.new("TextLabel")
+local CollapseBtn = Instance.new("TextButton") -- Dấu "-" thu gọn thủ công
+local CardsScroll = Instance.new("ScrollingFrame") -- Sử dụng thanh cuộn giúp sau này thêm nhiều phần vẫn hiển thị tốt
+local StartBtn = Instance.new("TextButton") -- Nút khởi động ở dưới cùng
+local StartCorner = Instance.new("UICorner")
+
+-- Thiết lập Main Frame
+MainFrame.Size = UDim2.new(0, 560, 0, 400)
+MainFrame.Position = UDim2.new(0.5, -280, 0.5, -200)
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18) -- Nền tối đẳng cấp
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true -- Hỗ trợ kéo thả menu di chuyển tự do trên màn hình
+MainFrame.Parent = ScreenGui
+
+-- Tạo viền màu cam bằng UIStroke cho sang trọng
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Color = Color3.fromRGB(255, 102, 0)
+MainStroke.Thickness = 2
+MainStroke.Parent = MainFrame
+
+MainCorner.CornerRadius = UDim.new(0, 10)
+MainCorner.Parent = MainFrame
+
+-- Thanh Tiêu Đề TopBar
+TopBar.Size = UDim2.new(1, 0, 0, 45)
+TopBar.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+TopBar.BorderSizePixel = 0
+TopBar.Parent = MainFrame
+
+TopBarCorner.CornerRadius = UDim.new(0, 10)
+TopBarCorner.Parent = TopBar
+
+TitleLabel.Size = UDim2.new(0, 400, 1, 0)
+TitleLabel.Position = UDim2.new(0, 15, 0, 0)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.Text = "🍊 KIETDEPZAI HUB - CHÀO BUỔI CHIỀU!"
+TitleLabel.TextColor3 = Color3.fromRGB(255, 102, 0) -- Màu Cam chủ đạo
+TitleLabel.TextSize = 16
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+TitleLabel.Parent = TopBar
+
+-- Dấu "-" Thu Gọn trên góc phải
+CollapseBtn.Size = UDim2.new(0, 35, 0, 35)
+CollapseBtn.Position = UDim2.new(1, -45, 0.5, -17.5)
+CollapseBtn.BackgroundTransparency = 1
+CollapseBtn.Font = Enum.Font.GothamBold
+CollapseBtn.Text = "—"
+CollapseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CollapseBtn.TextSize = 18
+CollapseBtn.Parent = TopBar
+
+-- Khu Vực Cuộn Chứa Các Thẻ Lựa Chọn (Cards Container)
+CardsScroll.Size = UDim2.new(1, -20, 1, -120)
+CardsScroll.Position = UDim2.new(0, 10, 0, 55)
+CardsScroll.BackgroundTransparency = 1
+CardsScroll.BorderSizePixel = 0
+CardsScroll.ScrollBarThickness = 5
+CardsScroll.ScrollBarImageColor3 = Color3.fromRGB(255, 102, 0)
+CardsScroll.Parent = MainFrame
+
+-- Tự động sắp xếp các Card dạng lưới/dòng
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Parent = CardsScroll
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 10)
+
+-- Cập nhật kích thước vùng cuộn dựa vào số lượng script có trong bảng
+UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    CardsScroll.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y + 10)
+end)
+
+-- Nút Khởi Động Ở Dưới Cùng
+StartBtn.Size = UDim2.new(1, -30, 0, 45)
+StartBtn.Position = UDim2.new(0, 15, 1, -55)
+StartBtn.BackgroundColor3 = Color3.fromRGB(255, 102, 0) -- Nền nút màu Cam rực rỡ
+StartBtn.Font = Enum.Font.GothamBold
+StartBtn.Text = "🚀 KHỞI ĐỘNG SCRIPT ĐÃ CHỌN"
+StartBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+StartBtn.TextSize = 15
+StartBtn.Parent = MainFrame
+
+StartCorner.CornerRadius = UDim.new(0, 8)
+StartCorner.Parent = StartBtn
+
+
+-- ==========================================
+-- 5. GIAO DIỆN MINI THU GỌN (MINI MENU LÊN TRÊN)
+-- ==========================================
+local MiniFrame = Instance.new("Frame")
+local MiniCorner = Instance.new("UICorner")
+local MiniStroke = Instance.new("UIStroke")
+local ExpandBtn = Instance.new("TextButton") -- Dấu "+" mở ra
+
+MiniFrame.Size = UDim2.new(0, 45, 0, 45)
+MiniFrame.Position = UDim2.new(0.5, -22.5, 0, 15) -- Nằm gọn gàng ở phía trên cùng giữa màn hình
+MiniFrame.BackgroundColor3 = Color3.fromRGB(255, 102, 0) -- Đổi hẳn sang cam để dễ nhận diện khi thu gọn
+MiniFrame.BorderSizePixel = 0
+MiniFrame.Visible = false -- Ban đầu ẩn đi
+MiniFrame.Active = true
+MiniFrame.Draggable = true
+MiniFrame.Parent = ScreenGui
+
+MiniCorner.CornerRadius = UDim.new(0, 12)
+MiniCorner.Parent = MiniFrame
+
+MiniStroke.Color = Color3.fromRGB(255, 255, 255)
+MiniStroke.Thickness = 1.5
+MiniStroke.Parent = MiniFrame
+
+ExpandBtn.Size = UDim2.new(1, 0, 1, 0)
+ExpandBtn.BackgroundTransparency = 1
+ExpandBtn.Font = Enum.Font.GothamBold
+ExpandBtn.Text = "+"
+ExpandBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ExpandBtn.TextSize = 24
+ExpandBtn.Parent = MiniFrame
+
+
+-- =====================================================================
+-- 6. KHỞI TẠO VÀ RENDER CÁC CARD CHỨC NĂNG TỰ ĐỘNG TỪ TABLE
+-- =====================================================================
+local cardButtonsList = {}
+
+for index, data in ipairs(HubScripts) do
+    local CardFrame = Instance.new("Frame")
+    local CardCorner = Instance.new("UICorner")
+    local CardStroke = Instance.new("UIStroke")
+    local InfoLabel = Instance.new("TextLabel")
+    local NoteLabel = Instance.new("TextLabel")
+    local SelectBtn = Instance.new("TextButton")
+    local SelectCorner = Instance.new("UICorner")
+    
+    CardFrame.Size = UDim2.new(1, -10, 0, 75)
+    CardFrame.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+    CardFrame.BorderSizePixel = 0
+    CardFrame.Parent = CardsScroll
+    
+    CardCorner.CornerRadius = UDim.new(0, 8)
+    CardCorner.Parent = CardFrame
+    
+    CardStroke.Color = Color3.fromRGB(45, 45, 45) -- Viền xám mặc định khi chưa chọn
+    CardStroke.Thickness = 1
+    CardStroke.Parent = CardFrame
+    
+    -- Tên phần (V1, V2, V3...)
+    InfoLabel.Size = UDim2.new(0, 350, 0, 30)
+    InfoLabel.Position = UDim2.new(0, 15, 0, 8)
+    InfoLabel.BackgroundTransparency = 1
+    InfoLabel.Font = Enum.Font.GothamBold
+    InfoLabel.Text = data.Name
+    InfoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    InfoLabel.TextSize = 15
+    InfoLabel.TextXAlignment = Enum.TextXAlignment.Left
+    InfoLabel.Parent = CardFrame
+    
+    -- Ghi chú ở ngay phía dưới như bạn yêu cầu
+    NoteLabel.Size = UDim2.new(0, 350, 0, 30)
+    NoteLabel.Position = UDim2.new(0, 15, 0, 35)
+    NoteLabel.BackgroundTransparency = 1
+    NoteLabel.Font = Enum.Font.SourceSansItalic
+    NoteLabel.Text = data.Note
+    NoteLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+    NoteLabel.TextSize = 13
+    NoteLabel.TextXAlignment = Enum.TextXAlignment.Left
+    NoteLabel.Parent = CardFrame
+    
+    -- Nút bấm Chọn phiên bản
+    SelectBtn.Size = UDim2.new(0, 110, 0, 38)
+    SelectBtn.Position = UDim2.new(1, -125, 0.5, -19)
+    SelectBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    SelectBtn.Font = Enum.Font.GothamBold
+    SelectBtn.Text = "CHỌN " .. data.ID
+    SelectBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    SelectBtn.TextSize = 13
+    SelectBtn.Parent = CardFrame
+    
+    SelectCorner.CornerRadius = UDim.new(0, 6)
+    SelectCorner.Parent = SelectBtn
+    
+    -- Đưa các thành phần đổi màu vào danh sách để quản lý trạng thái kích hoạt
+    cardButtonsList[index] = {
+        FrameStroke = CardStroke,
+        Button = SelectBtn
+    }
+    
+    -- Sự kiện khi click chọn 1 phần
+    SelectBtn.MouseButton1Click:Connect(function()
+        clickSound:Play() -- Phát âm thanh click hệ thống cực xịn
+        currentSelectedIdx = index -- Cập nhật vị trí đang chọn
+        
+        -- Reset màu toàn bộ các thẻ khác về trạng thái mặc định
+        for i, card in ipairs(cardButtonsList) do
+            card.FrameStroke.Color = Color3.fromRGB(45, 45, 45)
+            card.FrameStroke.Thickness = 1
+            card.Button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+            card.Button.TextColor3 = Color3.fromRGB(200, 200, 200)
+            card.Button.Text = "CHỌN " .. HubScripts[i].ID
+        end
+        
+        -- Đổi màu thẻ được chọn thành màu Cam rực rỡ để phân biệt rõ ràng
+        CardStroke.Color = Color3.fromRGB(255, 102, 0)
+        CardStroke.Thickness = 1.8
+        SelectBtn.BackgroundColor3 = Color3.fromRGB(255, 102, 0)
+        SelectBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        SelectBtn.Text = "✓ ĐÃ CHỌN"
+        
+        -- Đẩy thông báo nhảy lên ở góc màn hình như bạn mong muốn
+        CreateNotification("Đã chọn thành công phần " .. data.ID)
+    end)
+end
+
+
+-- =====================================================================
+-- 7. XỬ LÝ SỰ KIỆN KHỞI ĐỘNG VÀ ĐÓNG MỞ THU GỌN MENU (+ / -)
+-- =====================================================================
+
+-- Nhấp nút KHỞI ĐỘNG ở dưới
+StartBtn.MouseButton1Click:Connect(function()
+    clickSound:Play()
+    if currentSelectedIdx == nil then
+        CreateNotification("Vui lòng chọn 1 phiên bản trước khi khởi động!")
+        return
+    end
+    
+    local targetData = HubScripts[currentSelectedIdx]
+    CreateNotification("Đang kích hoạt cốt lõi " .. targetData.ID .. "...")
+    
+    -- Thực thi hàm chứa Script tương ứng được người dùng nạp ở Table trên đầu
+    task.spawn(targetData.ScriptFunction)
+    
+    -- Sau khi chọn tự động tắt menu chính, biến thành UI nhỏ thu gọn lên trên có dấu +
+    MainFrame.Visible = false
+    MiniFrame.Visible = true
+end)
+
+-- Nhấp nút dấu "—" trên Menu chính để thu gọn thủ công lên trên bất cứ lúc nào
+CollapseBtn.MouseButton1Click:Connect(function()
+    clickSound:Play()
+    MainFrame.Visible = false
+    MiniFrame.Visible = true
+end)
+
+-- Nhấp nút dấu "+" tại UI nhỏ thu gọn để mở bung lại Menu chính rộng rãi ra
+ExpandBtn.MouseButton1Click:Connect(function()
+    clickSound:Play()
+    MiniFrame.Visible = false
+    MainFrame.Visible = true
+end)
+
+CreateNotification("Chào mừng đến với KietDepZai Hub UI!")
