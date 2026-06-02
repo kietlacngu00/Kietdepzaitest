@@ -1,0 +1,409 @@
+-- =====================================================================
+-- KIETDEPZAI CUSTOM HUB V2 (ORANGE THEME)
+-- UI THUẦN TỰ LÀM 100% - KHÔNG LẤY THƯ VIỆN CỦA AI
+-- BẢN CẬP NHẬT: TABS, ĐỒNG HỒ, LỜI CHÀO ĐỘNG, HIỆU ỨNG CAM RƠI & CLICK RANDOM
+-- =====================================================================
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+local SoundService = game:GetService("SoundService")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+-- Âm thanh Click
+local clickSound = Instance.new("Sound")
+clickSound.SoundId = "rbxassetid://8536034151"
+clickSound.Volume = 1
+clickSound.Parent = SoundService
+
+-- CẤU HÌNH SCRIPT
+local HubScripts = {
+    { ID = "V1", Name = "KIETDEPZAI HUB V1", Note = "Bản No-Key, Ui siêu mượt, hỗ trợ máy yếu.", ScriptFunction = function() print("Chạy V1") end },
+    { ID = "V2", Name = "KIETDEPZAI HUB V2", Note = "Auto Farm quái cấp tốc, gom quái cực đỉnh.", ScriptFunction = function() print("Chạy V2") end },
+    { ID = "V3", Name = "KIETDEPZAI HUB V3", Note = "Bản nâng cao bypass anti-cheat, tối ưu FPS.", ScriptFunction = function() print("Chạy V3") end },
+    { ID = "V4", Name = "KIETDEPZAI HUB V4", Note = "Tính năng VIP, Auto Raid, Auto Boss.", ScriptFunction = function() print("Chạy V4") end },
+}
+local currentSelectedIdx = nil
+
+-- KHỞI TẠO SCREEN GUI
+local ScreenGui = Instance.new("ScreenGui")
+if getgui then ScreenGui.Parent = getgui()
+elseif syn and syn.protect_gui then syn.protect_gui(ScreenGui); ScreenGui.Parent = CoreGui
+else ScreenGui.Parent = CoreGui or LocalPlayer:WaitForChild("PlayerGui") end
+ScreenGui.Name = "KietDepZai_Hub_V2"
+ScreenGui.ResetOnSpawn = false
+
+-- HÀM KÉO THẢ (DRAGGABLE) MƯỢT MÀ CHO MỌI THIẾT BỊ
+local function MakeDraggable(dragPart, mainGfx)
+    local dragging, dragInput, mousePos, framePos
+    dragPart.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            mousePos = input.Position
+            framePos = mainGfx.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+    dragPart.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - mousePos
+            mainGfx.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+-- THÔNG BÁO NHẢY LÊN (TOAST NOTIFICATION)
+local function CreateNotification(text)
+    local NotifFrame = Instance.new("Frame")
+    local NotifCorner = Instance.new("UICorner")
+    local NotifText = Instance.new("TextLabel")
+    NotifFrame.Size = UDim2.new(0, 260, 0, 40)
+    NotifFrame.Position = UDim2.new(1, 20, 0.85, 0)
+    NotifFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    NotifFrame.BorderColor3 = Color3.fromRGB(255, 102, 0)
+    NotifFrame.BorderSizePixel = 1
+    NotifFrame.Parent = ScreenGui
+    NotifCorner.CornerRadius = UDim.new(0, 6); NotifCorner.Parent = NotifFrame
+    NotifText.Size = UDim2.new(1, 0, 1, 0)
+    NotifText.BackgroundTransparency = 1
+    NotifText.Font = Enum.Font.GothamBold
+    NotifText.TextColor3 = Color3.fromRGB(255, 102, 0)
+    NotifText.TextSize = 13; NotifText.Text = text; NotifText.Parent = NotifFrame
+    
+    NotifFrame:TweenPosition(UDim2.new(1, -280, 0.85, 0), "Out", "Quart", 0.4, true)
+    task.delay(2.5, function()
+        NotifFrame:TweenPosition(UDim2.new(1, 20, 0.85, 0), "In", "Quart", 0.4, true, function() NotifFrame:Destroy() end)
+    end)
+end
+
+-- HIỆU ỨNG QUẢ CAM RƠI XUYÊN SUỐT (BACKGROUND EFFECT)
+local function SpawnFallingOrange()
+    local orange = Instance.new("TextLabel")
+    orange.Text = "🍊"
+    orange.BackgroundTransparency = 1
+    orange.TextSize = math.random(15, 35)
+    -- Vị trí xuất phát ngẫu nhiên ở mép trên màn hình
+    orange.Position = UDim2.new(math.random(10, 90)/100, 0, -0.1, 0)
+    orange.Parent = ScreenGui
+    
+    local fallTime = math.random(4, 8)
+    local endPos = UDim2.new(orange.Position.X.Scale, math.random(-50, 50), 1.1, 0)
+    
+    local tween = TweenService:Create(orange, TweenInfo.new(fallTime, Enum.EasingStyle.Linear), {
+        Position = endPos,
+        Rotation = math.random(-360, 360)
+    })
+    tween:Play()
+    tween.Completed:Connect(function() orange:Destroy() end)
+end
+
+task.spawn(function()
+    while task.wait(math.random(1, 3)) do
+        SpawnFallingOrange()
+    end
+end)
+
+-- GIAO DIỆN CHÍNH
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 560, 0, 430)
+MainFrame.Position = UDim2.new(0.5, -280, 0.5, -215)
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = ScreenGui
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+local MainStroke = Instance.new("UIStroke", MainFrame); MainStroke.Color = Color3.fromRGB(255, 102, 0); MainStroke.Thickness = 2
+
+-- TOP BAR KÉO THẢ (DRAG AREA)
+local TopBar = Instance.new("Frame", MainFrame)
+TopBar.Size = UDim2.new(1, 0, 0, 60)
+TopBar.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+TopBar.BorderSizePixel = 0
+Instance.new("UICorner", TopBar).CornerRadius = UDim.new(0, 10)
+MakeDraggable(TopBar, MainFrame) -- Kéo thả MainFrame thông qua TopBar
+
+-- LỜI CHÀO ĐỘNG (DỰA VÀO GIỜ)
+local TitleLabel = Instance.new("TextLabel", TopBar)
+TitleLabel.Size = UDim2.new(0, 400, 0, 30)
+TitleLabel.Position = UDim2.new(0, 15, 0, 5)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.TextColor3 = Color3.fromRGB(255, 102, 0)
+TitleLabel.TextSize = 16
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local function UpdateTimeAndGreeting()
+    local timeTbl = os.date("*t")
+    local h = timeTbl.hour
+    local m = timeTbl.min
+    local s = timeTbl.sec
+    local day = timeTbl.day
+    local month = timeTbl.month
+    local year = timeTbl.year
+    
+    local greeting = ""
+    if h >= 5 and h <= 10 then greeting = "CHÀO BUỔI SÁNG"
+    elseif h == 11 or h == 12 then greeting = "CHÀO BUỔI TRƯA"
+    elseif h >= 13 and h <= 17 then greeting = "CHÀO BUỔI CHIỀU"
+    else greeting = "CHÀO BUỔI TỐI" end
+    
+    TitleLabel.Text = "🍊 KIETDEPZAI HUB - " .. greeting .. "!"
+    return string.format("%02d:%02d:%02d | %02d/%02d/%04d", h, m, s, day, month, year)
+end
+
+-- HIỂN THỊ ĐỒNG HỒ
+local ClockLabel = Instance.new("TextLabel", TopBar)
+ClockLabel.Size = UDim2.new(0, 400, 0, 20)
+ClockLabel.Position = UDim2.new(0, 15, 0, 32)
+ClockLabel.BackgroundTransparency = 1
+ClockLabel.Font = Enum.Font.GothamMedium
+ClockLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+ClockLabel.TextSize = 13
+ClockLabel.TextXAlignment = Enum.TextXAlignment.Left
+ClockLabel.Text = UpdateTimeAndGreeting()
+
+-- Vòng lặp cập nhật đồng hồ mỗi giây
+task.spawn(function()
+    while task.wait(1) do ClockLabel.Text = UpdateTimeAndGreeting() end
+end)
+
+-- NÚT THU GỌN CHÍNH
+local CollapseBtn = Instance.new("TextButton", TopBar)
+CollapseBtn.Size = UDim2.new(0, 35, 0, 35)
+CollapseBtn.Position = UDim2.new(1, -45, 0, 12)
+CollapseBtn.BackgroundTransparency = 1
+CollapseBtn.Font = Enum.Font.GothamBold
+CollapseBtn.Text = "—"
+CollapseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CollapseBtn.TextSize = 18
+
+-- ==================== HỆ THỐNG TABS ====================
+local TabContainer = Instance.new("Frame", MainFrame)
+TabContainer.Size = UDim2.new(1, 0, 0, 35)
+TabContainer.Position = UDim2.new(0, 0, 0, 65)
+TabContainer.BackgroundTransparency = 1
+
+local ScriptTabBtn = Instance.new("TextButton", TabContainer)
+ScriptTabBtn.Size = UDim2.new(0.5, -15, 1, 0)
+ScriptTabBtn.Position = UDim2.new(0, 10, 0, 0)
+ScriptTabBtn.BackgroundColor3 = Color3.fromRGB(255, 102, 0)
+ScriptTabBtn.Font = Enum.Font.GothamBold
+ScriptTabBtn.Text = "S C R I P T S"
+ScriptTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ScriptTabBtn.TextSize = 14
+Instance.new("UICorner", ScriptTabBtn).CornerRadius = UDim.new(0, 6)
+
+local InfoTabBtn = Instance.new("TextButton", TabContainer)
+InfoTabBtn.Size = UDim2.new(0.5, -15, 1, 0)
+InfoTabBtn.Position = UDim2.new(0.5, 5, 0, 0)
+InfoTabBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+InfoTabBtn.Font = Enum.Font.GothamBold
+InfoTabBtn.Text = "THÔNG TIN"
+InfoTabBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+InfoTabBtn.TextSize = 14
+Instance.new("UICorner", InfoTabBtn).CornerRadius = UDim.new(0, 6)
+
+-- PAGE 1: SCRIPTS LIST
+local ScriptsPage = Instance.new("ScrollingFrame", MainFrame)
+ScriptsPage.Size = UDim2.new(1, -20, 1, -165)
+ScriptsPage.Position = UDim2.new(0, 10, 0, 105)
+ScriptsPage.BackgroundTransparency = 1
+ScriptsPage.BorderSizePixel = 0
+ScriptsPage.ScrollBarThickness = 4
+ScriptsPage.ScrollBarImageColor3 = Color3.fromRGB(255, 102, 0)
+ScriptsPage.Visible = true
+
+local ScriptLayout = Instance.new("UIListLayout", ScriptsPage)
+ScriptLayout.SortOrder = Enum.SortOrder.LayoutOrder
+ScriptLayout.Padding = UDim.new(0, 10)
+ScriptLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() ScriptsPage.CanvasSize = UDim2.new(0, 0, 0, ScriptLayout.AbsoluteContentSize.Y + 10) end)
+
+-- PAGE 2: INFOMATION LIST
+local InfoPage = Instance.new("Frame", MainFrame)
+InfoPage.Size = UDim2.new(1, -20, 1, -165)
+InfoPage.Position = UDim2.new(0, 10, 0, 105)
+InfoPage.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Instance.new("UICorner", InfoPage).CornerRadius = UDim.new(0, 8)
+InfoPage.Visible = false
+
+local InfoText = Instance.new("TextLabel", InfoPage)
+InfoText.Size = UDim2.new(1, -20, 1, -20)
+InfoText.Position = UDim2.new(0, 10, 0, 10)
+InfoText.BackgroundTransparency = 1
+InfoText.Font = Enum.Font.GothamMedium
+InfoText.TextSize = 16
+InfoText.TextColor3 = Color3.fromRGB(230, 230, 230)
+InfoText.TextXAlignment = Enum.TextXAlignment.Left
+InfoText.TextYAlignment = Enum.TextYAlignment.Top
+InfoText.RichText = true
+InfoText.Text = string.format([[
+<font color="rgb(255,102,0)"><b>THÔNG TIN HỆ THỐNG KIETDEPZAI HUB:</b></font>
+
+- Tác giả: <b>kietdepzai</b>
+- Ngày kỷ niệm: <b>Happy 14/3/2013</b>
+- Cốt: <b>kiên</b>
+- Tên Roblox người chạy script: <b>%s</b> (Display: %s)
+
+Cảm ơn bạn đã tin tưởng và sử dụng phiên bản độc quyền này.
+Chúc bạn chơi game vui vẻ, farm siêu tốc! 🍊🚀
+]], LocalPlayer.Name, LocalPlayer.DisplayName)
+
+-- Xử lý chuyển Tab
+ScriptTabBtn.MouseButton1Click:Connect(function()
+    clickSound:Play()
+    ScriptsPage.Visible = true; InfoPage.Visible = false
+    ScriptTabBtn.BackgroundColor3 = Color3.fromRGB(255, 102, 0); ScriptTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    InfoTabBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40); InfoTabBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+end)
+InfoTabBtn.MouseButton1Click:Connect(function()
+    clickSound:Play()
+    ScriptsPage.Visible = false; InfoPage.Visible = true
+    InfoTabBtn.BackgroundColor3 = Color3.fromRGB(255, 102, 0); InfoTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ScriptTabBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40); ScriptTabBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+end)
+
+-- ==================== CÁC HIỆU ỨNG RANDOM KHI CLICK (DÀNH CHO NÚT CHỌN) ====================
+local RandomEffects = {
+    function(btn) -- Lắc nhẹ nút (Shake)
+        local origPos = btn.Position
+        local tw1 = TweenService:Create(btn, TweenInfo.new(0.05), {Position = origPos + UDim2.new(0,5,0,0)})
+        local tw2 = TweenService:Create(btn, TweenInfo.new(0.05), {Position = origPos - UDim2.new(0,5,0,0)})
+        local tw3 = TweenService:Create(btn, TweenInfo.new(0.05), {Position = origPos})
+        tw1:Play(); tw1.Completed:Wait(); tw2:Play(); tw2.Completed:Wait(); tw3:Play()
+    end,
+    function(btn) -- Nháy sáng đổi màu (Flash Color)
+        local origColor = btn.BackgroundColor3
+        btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        TweenService:Create(btn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(255, 102, 0)}):Play()
+    end,
+    function(btn) -- Xoay một vòng (Spin)
+        local tw = TweenService:Create(btn, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Rotation = 360})
+        tw:Play()
+        tw.Completed:Connect(function() btn.Rotation = 0 end)
+    end,
+    function(btn) -- Bật lớn rồi thu nhỏ (Pop/Scale)
+        local origSize = btn.Size
+        local tw1 = TweenService:Create(btn, TweenInfo.new(0.1), {Size = origSize + UDim2.new(0,10,0,6)})
+        tw1:Play(); tw1.Completed:Wait()
+        TweenService:Create(btn, TweenInfo.new(0.15), {Size = origSize}):Play()
+    end
+}
+
+-- KHỞI TẠO DANH SÁCH CARDS SCRIPT
+local cardButtonsList = {}
+
+for index, data in ipairs(HubScripts) do
+    local CardFrame = Instance.new("Frame", ScriptsPage)
+    CardFrame.Size = UDim2.new(1, -10, 0, 75)
+    CardFrame.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+    CardFrame.BorderSizePixel = 0
+    Instance.new("UICorner", CardFrame).CornerRadius = UDim.new(0, 8)
+    
+    local CardStroke = Instance.new("UIStroke", CardFrame)
+    CardStroke.Color = Color3.fromRGB(45, 45, 45)
+    CardStroke.Thickness = 1
+    
+    local InfoLabel = Instance.new("TextLabel", CardFrame)
+    InfoLabel.Size = UDim2.new(0, 350, 0, 30); InfoLabel.Position = UDim2.new(0, 15, 0, 8)
+    InfoLabel.BackgroundTransparency = 1; InfoLabel.Font = Enum.Font.GothamBold
+    InfoLabel.Text = data.Name; InfoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    InfoLabel.TextSize = 15; InfoLabel.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local NoteLabel = Instance.new("TextLabel", CardFrame)
+    NoteLabel.Size = UDim2.new(0, 350, 0, 30); NoteLabel.Position = UDim2.new(0, 15, 0, 35)
+    NoteLabel.BackgroundTransparency = 1; NoteLabel.Font = Enum.Font.SourceSansItalic
+    NoteLabel.Text = data.Note; NoteLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+    NoteLabel.TextSize = 13; NoteLabel.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local SelectBtn = Instance.new("TextButton", CardFrame)
+    SelectBtn.Size = UDim2.new(0, 110, 0, 38); SelectBtn.Position = UDim2.new(1, -125, 0.5, -19)
+    SelectBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40); SelectBtn.Font = Enum.Font.GothamBold
+    SelectBtn.Text = "CHỌN " .. data.ID; SelectBtn.TextColor3 = Color3.fromRGB(200, 200, 200); SelectBtn.TextSize = 13
+    Instance.new("UICorner", SelectBtn).CornerRadius = UDim.new(0, 6)
+    
+    cardButtonsList[index] = { FrameStroke = CardStroke, Button = SelectBtn }
+    
+    SelectBtn.MouseButton1Click:Connect(function()
+        clickSound:Play()
+        currentSelectedIdx = index
+        
+        -- Kích hoạt 1 hiệu ứng Random cho nút vừa bấm
+        local randomEffectCall = RandomEffects[math.random(1, #RandomEffects)]
+        task.spawn(function() randomEffectCall(SelectBtn) end)
+        
+        for i, card in ipairs(cardButtonsList) do
+            card.FrameStroke.Color = Color3.fromRGB(45, 45, 45); card.FrameStroke.Thickness = 1
+            card.Button.BackgroundColor3 = Color3.fromRGB(40, 40, 40); card.Button.TextColor3 = Color3.fromRGB(200, 200, 200)
+            card.Button.Text = "CHỌN " .. HubScripts[i].ID
+        end
+        
+        CardStroke.Color = Color3.fromRGB(255, 102, 0); CardStroke.Thickness = 1.8
+        SelectBtn.BackgroundColor3 = Color3.fromRGB(255, 102, 0); SelectBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        SelectBtn.Text = "✓ ĐÃ CHỌN"
+        
+        CreateNotification("Đã chọn thành công phần " .. data.ID .. "!")
+    end)
+end
+
+-- NÚT KHỞI ĐỘNG Ở ĐÁY
+local StartBtn = Instance.new("TextButton", MainFrame)
+StartBtn.Size = UDim2.new(1, -30, 0, 45)
+StartBtn.Position = UDim2.new(0, 15, 1, -55)
+StartBtn.BackgroundColor3 = Color3.fromRGB(255, 102, 0)
+StartBtn.Font = Enum.Font.GothamBold
+StartBtn.Text = "🚀 KHỞI ĐỘNG SCRIPT ĐÃ CHỌN"
+StartBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+StartBtn.TextSize = 15
+Instance.new("UICorner", StartBtn).CornerRadius = UDim.new(0, 8)
+
+-- NÚT THU GỌN MINI (CÓ THỂ DI CHUYỂN BẰNG MAKEDRAGGABLE)
+local MiniFrame = Instance.new("Frame", ScreenGui)
+MiniFrame.Size = UDim2.new(0, 50, 0, 50)
+MiniFrame.Position = UDim2.new(0.5, -25, 0, 15)
+MiniFrame.BackgroundColor3 = Color3.fromRGB(255, 102, 0)
+MiniFrame.BorderSizePixel = 0
+MiniFrame.Visible = false
+Instance.new("UICorner", MiniFrame).CornerRadius = UDim.new(0, 25) -- Hình tròn
+local MiniStroke = Instance.new("UIStroke", MiniFrame); MiniStroke.Color = Color3.fromRGB(255, 255, 255); MiniStroke.Thickness = 1.5
+
+-- Nút mở (Text) bên trong
+local ExpandBtn = Instance.new("TextButton", MiniFrame)
+ExpandBtn.Size = UDim2.new(1, 0, 1, 0)
+ExpandBtn.BackgroundTransparency = 1
+ExpandBtn.Font = Enum.Font.GothamBold
+ExpandBtn.Text = "+"
+ExpandBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ExpandBtn.TextSize = 28
+
+-- Kéo thả (Draggable) cho Menu Thu Gọn (+). Kéo ngay trên ExpandBtn
+MakeDraggable(ExpandBtn, MiniFrame)
+
+StartBtn.MouseButton1Click:Connect(function()
+    clickSound:Play()
+    if currentSelectedIdx == nil then CreateNotification("Vui lòng chọn 1 phiên bản trước!"); return end
+    
+    local targetData = HubScripts[currentSelectedIdx]
+    CreateNotification("🚀 Đang khởi chạy " .. targetData.ID .. "...")
+    task.spawn(targetData.ScriptFunction)
+    
+    MainFrame.Visible = false; MiniFrame.Visible = true
+end)
+
+CollapseBtn.MouseButton1Click:Connect(function()
+    clickSound:Play()
+    MainFrame.Visible = false; MiniFrame.Visible = true
+end)
+
+-- Click (nhấp chuột) vào nút Expand để mở rộng (Không bị nhầm với thao tác kéo thả vì Roblox Input tự phân biệt)
+ExpandBtn.MouseButton1Click:Connect(function()
+    clickSound:Play()
+    MiniFrame.Visible = false; MainFrame.Visible = true
+end)
+
+CreateNotification("Cập nhật thành công KietDepZai Hub V2!")
