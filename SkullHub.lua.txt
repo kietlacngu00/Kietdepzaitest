@@ -1,4 +1,4 @@
-loadstring(game:HttpGet("https://raw.githubusercontent.com/hdanhhub/hdanhhub/refs/heads/main/Fix-Lag.lua.txt"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/kietdepzaifixlag/refs/heads/main/kietfixlag1"))()
 --[[
     Abacaxi Hub - Optimized Version
     Performance & Code Quality Improvements
@@ -17,7 +17,7 @@ local function NotificacaoNightMystic(titulo, mensagem)
     local success = pcall(function()
         local TweenService = Services.TweenService
         local CoreGui = Services.CoreGui
-        local LogoID = "rbxassetid://3025004408"
+        local LogoID = "rbxassetid://106113185922406"
 
         local ScreenGui = Instance.new("ScreenGui")
         ScreenGui.Name = "NM_Notify"
@@ -98,13 +98,13 @@ local function NotificacaoNightMystic(titulo, mensagem)
     end
 end
 
-NotificacaoNightMystic("Skull Hub", "Script loaded successfully!")
+NotificacaoNightMystic("kietdepzai", "Script loaded successfully!")
 
 -- ========================================
 -- SAVE SYSTEM (Optimized)
 -- ========================================
 local HttpService = Services.HttpService
-local FolderName = "Skull Hub"
+local FolderName = "kietdepzai Hub"
 local FileName = "Settings.json"
 local FullPath = FolderName .. "/" .. FileName
 
@@ -2334,10 +2334,10 @@ elseif I == 1650 or I <= 1699 then
 			PosQ = CFrame.new(-16668.03,105.32,1568.60)
 			PosM = CFrame.new(-16645.64,163.09,1352.87)
 		elseif I >= 2575 and I <= 2599 then 
-			Mon = "Skull Slayer"
+			Mon = "kietdepzai Slayer"
 			Qdata = 2
 			Qname = "TikiQuest3"
-			NameMon = "Skull Slayer"
+			NameMon = "kietdepzai Slayer"
 			PosQ = CFrame.new(-16668.03,105.32,1568.60)
 			PosM = CFrame.new(-16709.49,419.68,1751.09)
 		elseif I >= 2600 and I <= 2624 then
@@ -2555,8 +2555,8 @@ QuestNeta = function()
 		};
 	end;
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/VTDROBLOX/Animehub/refs/heads/main/ui_tay.txt"))():MakeWindow({
-    Title = "Skull Hub",
-    SubTitle = "by Khánh depzai",
+    Title = "kietdepzai Hub",
+    SubTitle = "by kietdepzaihehe",
     SaveFolder = "Maça.json"
 })
 -- Criar ScreenGui
@@ -2568,7 +2568,7 @@ screenGui.Parent = game.CoreGui
 local imageButton = Instance.new("ImageButton")
 imageButton.Size = UDim2.new(0, 50, 0, 50)
 imageButton.Position = UDim2.new(0.15, 0, 0.15, 0)
-imageButton.Image = "rbxassetid://91222518412026"
+imageButton.Image = "rbxassetid://106113185922406"
 imageButton.BackgroundTransparency = 1
 imageButton.Parent = screenGui
 
@@ -2637,83 +2637,83 @@ imageButton.MouseButton1Click:Connect(function()
 end)
 local Discord = Library:MakeTab({
     Title = "Discord",
-    Icon = "rbxassetid://73132811772878"
+    Icon = "rbxassetid://106113185922406"
 })
 
 local Status = Library:MakeTab({
     Title = "Status And Server",
-    Icon = "rbxassetid://7040410130"
+    Icon = "rbxassetid://106113185922406"
 })
 
 local Shop = Library:MakeTab({
     Title = "Shop",
-    Icon = "rbxassetid://6031265976"
+    Icon = "rbxassetid://106113185922406"
 })
 
 local Farm = Library:MakeTab({
     Title = "Farming",
-    Icon = "rbxassetid://127561653320876"
+    Icon = "rbxassetid://106113185922406"
 })
 
 local Maestry = Library:MakeTab({
     Title = "Farm Maestry",
-    Icon = "rbxassetid://10709782497"
+    Icon = "rbxassetid://106113185922406"
 })
 
 local Others = Library:MakeTab({
     Title = "Farm Others",
-    Icon = "rbxassetid://10723405360"
+    Icon = "rbxassetid://106113185922406"
 })
 
 local Event = Library:MakeTab({
     Title = "Sea Event",
-    Icon = "rbxassetid://10709783577"
+    Icon = "rbxassetid://106113185922406"
 })
 
 local Race = Library:MakeTab({
     Title = "Race Upgrade",
-    Icon = "rbxassetid://115164375298022"
+    Icon = "rbxassetid://106113185922406"
 })
 
 local Dojo = Library:MakeTab({
     Title = "Dojo Quest & Dragon Race",
-    Icon = "rbxassetid://91920478152016"
+    Icon = "rbxassetid://106113185922406"
 })
 
 local Esp = Library:MakeTab({
     Title = "Stats & ESP",
-    Icon = "rbxassetid://11155851001"
+    Icon = "rbxassetid://106113185922406"
 })
 
 local Player = Library:MakeTab({
     Title = "Local Player",
-    Icon = "rbxassetid://13075651575"
+    Icon = "rbxassetid://106113185922406"
 })
 
 local Teleport = Library:MakeTab({
     Title = "Teleport",
-    Icon = "rbxassetid://10734886004"
+    Icon = "rbxassetid://106113185922406"
 })
 
 local Get = Library:MakeTab({
     Title = "Get Items & Upgrade",
-    Icon = "rbxassetid://13075622619"
+    Icon = "rbxassetid://106113185922406"
 })
 
 local Fruit = Library:MakeTab({
     Title = "Raid & Fruit",
-    Icon = "rbxassetid://11155986081"
+    Icon = "rbxassetid://106113185922406"
 })
 
 local Setting = Library:MakeTab({
     Title = "Settings & Misc",
-    Icon = "rbxassetid://7734053495"
+    Icon = "rbxassetid://106113185922406"
 })
 Discord:AddDiscordInvite({
-    Name = "Skull Hub",
-    Description = "vào sever ngay không = GAY",
-    Logo = "rbxassetid://3025004408",
-    Invite = "https://discord.gg/287EAB3d5"
+    Name = "kietdepzai Hub",
+    Description = "hehe",
+    Logo = "rbxassetid://106113185922406",
+    Invite = "https://discord.gg/khongco"
 })
 local credits = Discord:AddParagraph({
     Title = "Credits For Someone Peoples",
@@ -3458,10 +3458,10 @@ end)
 local function GetTargetByLevel()
     local myLevel = game.Players.LocalPlayer.Data.Level.Value
     
--- [LEVEL 2575+] SKULL SLAYER
+-- [LEVEL 2575+] kietdepzai SLAYER
 if myLevel >= 2575 then
     return {
-        Name = "Skull Slayer",
+        Name = "kietdepzai Slayer",
         QuestArgs = {"StartQuest", "TikiQuest3", 2},
         QuestPos = CFrame.new(
             -16665.0879, 105.27478, 1577.61743,
@@ -3690,7 +3690,7 @@ spawn(function()
                             local closestEnemy = nil
                             local shortestDistance = math.huge 
 
-                            local AllMobs = {"Skull Slayer", "Serpent Hunter", "Isle Champion", "Sun-kissed Warrior", "Island Boy", "Isle Outlaw"}
+                            local AllMobs = {"kietdepzai Slayer", "Serpent Hunter", "Isle Champion", "Sun-kissed Warrior", "Island Boy", "Isle Outlaw"}
                             
                             for _, v in pairs(workspace.Enemies:GetChildren()) do
                                 if table.find(AllMobs, v.Name) and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 and v:FindFirstChild("HumanoidRootPart") then
@@ -4758,7 +4758,7 @@ local ToolAbilities = Net:WaitForChild("RF/JobToolAbilities")
 -- =========================================================
 -- CONFIGURAÇÃO DA NOTIFICAÇÃO CUSTOMIZADA (FULL BLACK)
 -- =========================================================
-local LogoID = "rbxassetid://115377474207871"
+local LogoID = "rbxassetid://106113185922406"
 
 local function NotifyNightMystic(texto)
     task.spawn(function()
@@ -7531,7 +7531,7 @@ spawn(function()
                         local shoot = K:FindFirstChild("RE/ShootGunEvent")
                         local tool = plr.Character:FindFirstChildOfClass("Tool")
 
-                        if tool and tool.Name == "Skull Guitar" then
+                        if tool and tool.Name == "kietdepzai Guitar" then
                             SoulGuitar = true
                             tool.RemoteEvent:FireServer("TAP", MousePos)
                         elseif tool then
@@ -8101,7 +8101,7 @@ spawn(function()
 					debug = true;
 				elseif debug == true and ((CFrame.new(5865.0234375, 1208.3154296875, 871.15185546875)).Position - plr.Character.HumanoidRootPart.Position).Magnitude <= 50 then
 					if K == "White" then
-						local I = GetConnectionEnemies("Skull Slayer");
+						local I = GetConnectionEnemies("kietdepzai Slayer");
 						if I then
 							repeat
 								task.wait();
@@ -10061,9 +10061,9 @@ spawn(function()
 	end;
 end);
 if World3 then
-Get:AddSection({"Skull Guitar"});
+Get:AddSection({"kietdepzai Guitar"});
 Get:AddToggle({
-	Name = "Auto Skull Guitar",
+	Name = "Auto kietdepzai Guitar",
 	Description = "",
 	Default = false,
 	Callback = function(I)
@@ -10258,7 +10258,7 @@ end);
 end
 if World2 or World3 then
 Get:AddToggle({
-	Name = "Auto Farm Material Skull Guitar",
+	Name = "Auto Farm Material kietdepzai Guitar",
 	Description = "",
 	Default = false,
 	Callback = function(I)
@@ -10268,7 +10268,7 @@ Get:AddToggle({
 spawn(function()
 	while wait(Sec) do
 		pcall(function()
-			if _G.AutoMatSoul and GetWP("Skull Guitar") == false then
+			if _G.AutoMatSoul and GetWP("kietdepzai Guitar") == false then
 				if GetM("Bones") >= 500 and (GetM("Ectoplasm") >= 250 and GetM("Dark Fragment") >= 1) then
 					replicated.Remotes.CommF_:InvokeServer("soulGuitarBuy", true);
 				else
@@ -12117,7 +12117,7 @@ Setting:AddButton({
     Description = "Chạy toàn bộ: xóa hiệu ứng, dọn RAM, giảm render, tắt shadow",
     Callback = function()
         LowCpu()
-        NotificacaoNightMystic("Skull Hub", "✅ Ultra Optimizer đã kích hoạt!")
+        NotificacaoNightMystic("kietdepzai Hub", "✅ Ultra Optimizer đã kích hoạt!")
     end
 });
 
@@ -12136,7 +12136,7 @@ Setting:AddButton({
         end)
         pcall(function() collectgarbage("collect") end)
         pcall(function() collectgarbage() end)
-        NotificacaoNightMystic("Skull Hub", "🧹 RAM đã được dọn sạch!")
+        NotificacaoNightMystic("kietdepzai Hub", "🧹 RAM đã được dọn sạch!")
     end
 });
 
@@ -12164,7 +12164,7 @@ Setting:AddButton({
             CleanFolder(workspace:FindFirstChild("Characters"))
             CleanFolder(workspace:FindFirstChild("SeaBeasts"))
         end)
-        NotificacaoNightMystic("Skull Hub", "✨ Đã xóa hiệu ứng NPC!")
+        NotificacaoNightMystic("kietdepzai Hub", "✨ Đã xóa hiệu ứng NPC!")
     end
 });
 
@@ -12191,7 +12191,7 @@ Setting:AddButton({
                 end
             end)
         end)
-        NotificacaoNightMystic("Skull Hub", "🌑 Đang tắt shadow toàn map...")
+        NotificacaoNightMystic("kietdepzai Hub", "🌑 Đang tắt shadow toàn map...")
     end
 });
 
@@ -12213,7 +12213,7 @@ Setting:AddButton({
             L.FogStart = 9e9
             L.Brightness = 2
         end)
-        NotificacaoNightMystic("Skull Hub", "💡 Đã xóa post-processing!")
+        NotificacaoNightMystic("kietdepzai Hub", "💡 Đã xóa post-processing!")
     end
 });
 
@@ -12225,7 +12225,7 @@ Setting:AddButton({
         pcall(function()
             UserSettings():GetService("UserGameSettings").SavedQualityLevel = Enum.SavedQualitySetting.QualityLevel01
         end)
-        NotificacaoNightMystic("Skull Hub", "🎮 Render Quality → Level 1!")
+        NotificacaoNightMystic("kietdepzai Hub", "🎮 Render Quality → Level 1!")
     end
 });
 
@@ -12250,9 +12250,9 @@ Setting:AddToggle({
                     pcall(function() collectgarbage() end)
                 end
             end)
-            NotificacaoNightMystic("Skull Hub", "🔄 Auto RAM Clean: BẬT")
+            NotificacaoNightMystic("kietdepzai Hub", "🔄 Auto RAM Clean: BẬT")
         else
-            NotificacaoNightMystic("Skull Hub", "🔄 Auto RAM Clean: TẮT")
+            NotificacaoNightMystic("kietdepzai Hub", "🔄 Auto RAM Clean: TẮT")
         end
     end
 });
@@ -12271,7 +12271,7 @@ Setting:AddButton({
             end)
         end
         getgenv().gg_scripters = "Aori0001"
-        NotificacaoNightMystic("Skull Hub", "📺 Stretch Screen đã bật!")
+        NotificacaoNightMystic("kietdepzai Hub", "📺 Stretch Screen đã bật!")
     end
 });
 local V5 = game.Players.LocalPlayer;
@@ -12394,7 +12394,7 @@ end)
 _ENV.rz_FastAttack = FastAttack
 FastAttackModule.FastAttack = FastAttack
 
-NotificacaoNightMystic("Skull Hub", "👋 Chào mừng đến với Skull Hub (Freemium)")
+NotificacaoNightMystic("kietdepzai Hub", "👋 Chào mừng đến với kietdepzai Hub (Freemium)")
 
 -- FastAttackModule loaded
 loadstring(game:HttpGet("https://raw.githubusercontent.com/Teddyseetink/Haidepzai/refs/heads/main/notify"))()
