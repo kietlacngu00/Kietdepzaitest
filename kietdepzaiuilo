@@ -16,37 +16,37 @@ local HubScripts = {
     { 
         ID = "V1", 
         Name = "KIETDEPZAI HUB V1", 
-        Note = "Thay đổi dòng mô tả cho bản V1 ở đây tùy ý bạn", 
+        Note = "menu v1", 
         ScriptFunction = function() 
             -- CHÈN LINK SCRIPT HOẶC CODE CỦA V1 VÀO DƯỚI DÒNG NÀY:
-            loadstring(game:HttpGet("https://pastebin.com/raw/Link_Script_V1_Cua_Ban"))()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/framvipbro/refs/heads/main/kietdepzaiv3.lua"))()
         end 
     },
     { 
         ID = "V2", 
         Name = "KIETDEPZAI HUB V2", 
-        Note = "Thay đổi dòng mô tả cho bản V2 ở đây tùy ý bạn", 
+        Note = "v2 nhé", 
         ScriptFunction = function() 
             -- CHÈN LINK SCRIPT HOẶC CODE CỦA V2 VÀO DƯỚI DÒNG NÀY:
-            loadstring(game:HttpGet("https://pastebin.com/raw/Link_Script_V2_Cua_Ban"))()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/framvipbro/refs/heads/main/kietdepzaiv3.lua"))()
         end 
     },
     { 
         ID = "V3", 
         Name = "KIETDEPZAI HUB V3", 
-        Note = "Thay đổi dòng mô tả cho bản V3 ở đây tùy ý bạn", 
+        Note = "định vị và giảm lag", 
         ScriptFunction = function() 
             -- CHÈN LINK SCRIPT HOẶC CODE CỦA V3 VÀO DƯỚI DÒNG NÀY:
-            loadstring(game:HttpGet("https://pastebin.com/raw/Link_Script_V3_Cua_Ban"))()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/Kietdepzaitest/refs/heads/main/Lag"))()
         end 
     },
     { 
         ID = "V4", 
         Name = "KIETDEPZAI HUB V4", 
-        Note = "Thay đổi dòng mô tả cho bản V4 ở đây tùy ý bạn", 
+        Note = "1 click max level", 
         ScriptFunction = function() 
             -- CHÈN LINK SCRIPT HOẶC CODE CỦA V4 VÀO DƯỚI DÒNG NÀY:
-            loadstring(game:HttpGet("https://pastebin.com/raw/Link_Script_V4_Cua_Ban"))()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/Kietdepzaitest/refs/heads/main/Maxlevl"))()
         end 
     },
 }
