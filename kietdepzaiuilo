@@ -34,10 +34,10 @@ local HubScripts = {
     { 
         ID = "V3", 
         Name = "KIETDEPZAI HUB V3", 
-        Note = "định vị và giảm lag", 
+        Note = "mene v3", 
         ScriptFunction = function() 
             -- CHÈN LINK SCRIPT HOẶC CODE CỦA V3 VÀO DƯỚI DÒNG NÀY:
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/Kietdepzaitest/refs/heads/main/Lag"))()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/Kietdepzaitest/refs/heads/main/SkullHub.lua.txt"))()
         end 
     },
     { 
@@ -49,8 +49,16 @@ local HubScripts = {
             loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/Kietdepzaitest/refs/heads/main/Maxlevl"))()
         end 
     },
+    { 
+        ID = "V5", 
+        Name = "KIETDEPZAI HUB V5", 
+        Note = "định vị và giảm lag", 
+        ScriptFunction = function() 
+            -- CHÈN LINK SCRIPT HOẶC CODE CỦA V3 VÀO DƯỚI DÒNG NÀY:
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/Kietdepzaitest/refs/heads/main/Lag"))()
+        end 
+    }
 }
-
 -- =====================================================================
 -- ⛔ KHÔNG CẦN CHỈNH SỬA PHẦN DƯỚI NÀY (HỆ THỐNG GIAO DIỆN & HIỆU ỨNG)
 -- =====================================================================
