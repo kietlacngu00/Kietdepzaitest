@@ -28,7 +28,7 @@ local HubScripts = {
         Note = "v2 nhé", 
         ScriptFunction = function() 
             -- CHÈN LINK SCRIPT HOẶC CODE CỦA V2 VÀO DƯỚI DÒNG NÀY:
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/framvipbro/refs/heads/main/kietdepzaiv3.lua"))()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/framvipbro/refs/heads/main/zen.txt"))()
         end 
     },
     { 
