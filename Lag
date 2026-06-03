@@ -1,0 +1,84 @@
+print("[Lag Reducer & Visual Enhancer]: Đang kích hoạt...")
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
+
+local localPlayer = Players.LocalPlayer
+
+-- Tăng sáng để nhìn rõ hơn
+Lighting.Brightness = 3
+Lighting.GlobalShadows = false
+Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+
+-- Xóa bỏ hiệu ứng đồ họa không cần thiết
+for _, v in pairs(game:GetDescendants()) do
+    if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then
+        v:Destroy()
+    elseif v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("BloomEffect") or v:IsA("DepthOfFieldEffect") then
+        v.Enabled = false
+    end
+end
+
+-- Giảm chất lượng vật liệu
+for _, part in pairs(workspace:GetDescendants()) do
+    if part:IsA("BasePart") then
+        part.Material = Enum.Material.SmoothPlastic
+        part.Reflectance = 0
+    end
+end
+
+-- Highlight người chơi xung quanh
+local function highlightPlayers()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= localPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            -- Tạo Highlight
+            if not player.Character:FindFirstChild("Highlight") then
+                local highlight = Instance.new("Highlight")
+                highlight.Adornee = player.Character
+                highlight.Parent = player.Character
+                highlight.FillColor = Color3.new(1, 0, 0) -- Màu đỏ
+                highlight.OutlineColor = Color3.new(1, 1, 1) -- Màu viền trắng
+                highlight.FillTransparency = 0.5
+                highlight.OutlineTransparency = 0
+            end
+
+            -- Hiển thị thanh máu trên đầu
+            if not player.Character:FindFirstChild("HealthBar") then
+                local billboard = Instance.new("BillboardGui")
+                billboard.Name = "HealthBar"
+                billboard.Adornee = player.Character:WaitForChild("HumanoidRootPart")
+                billboard.Size = UDim2.new(4, 0, 0.5, 0)
+                billboard.StudsOffset = Vector3.new(0, 3, 0)
+                billboard.AlwaysOnTop = true
+                billboard.Parent = player.Character
+
+                local barBackground = Instance.new("Frame", billboard)
+                barBackground.Size = UDim2.new(1, 0, 1, 0)
+                barBackground.BackgroundColor3 = Color3.new(0, 0, 0)
+                barBackground.BorderSizePixel = 0
+
+                local healthBar = Instance.new("Frame", barBackground)
+                healthBar.Size = UDim2.new(player.Character.Humanoid.Health / player.Character.Humanoid.MaxHealth, 0, 1, 0)
+                healthBar.BackgroundColor3 = Color3.new(0, 1, 0) -- Màu xanh lá
+                healthBar.BorderSizePixel = 0
+
+                -- Cập nhật thanh máu theo thời gian
+                player.Character.Humanoid.HealthChanged:Connect(function()
+                    healthBar.Size = UDim2.new(player.Character.Humanoid.Health / player.Character.Humanoid.MaxHealth, 0, 1, 0)
+                end)
+            end
+        end
+    end
+end
+
+-- Chạy highlight và cập nhật liên tục
+RunService.Heartbeat:Connect(function()
+    highlightPlayers()
+end)
+
+-- Cố định FPS để giảm lag
+setfpscap(60)
+
+print("[Lag Reducer & Visual Enhancer]: Đã kích hoạt thành công!")
