@@ -43,10 +43,10 @@ local HubScripts = {
     { 
         ID = "V4", 
         Name = "KIETDEPZAI HUB V4", 
-        Note = "1 click max level", 
+        Note = "menu tiếp theo", 
         ScriptFunction = function() 
             -- CHÈN LINK SCRIPT HOẶC CODE CỦA V4 VÀO DƯỚI DÒNG NÀY:
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/Kietdepzaitest/refs/heads/main/Maxlevl"))()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/framvipbro/refs/heads/main/TurboLiteHubV2.lua.txt"))()
         end 
     },
     { 
@@ -55,10 +55,19 @@ local HubScripts = {
         Note = "định vị và giảm lag", 
         ScriptFunction = function() 
             -- CHÈN LINK SCRIPT HOẶC CODE CỦA V3 VÀO DƯỚI DÒNG NÀY:
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/Kietdepzaitest/refs/heads/main/Maxlevl"))()
+        end 
+    }
+    {
+    {ID = "V6", 
+        Name = "KIETDEPZAI HUB V6", 
+        Note = "định vị và giảm lag", 
+        ScriptFunction = function() 
+            -- CHÈN LINK SCRIPT HOẶC CODE CỦA V3 VÀO DƯỚI DÒNG NÀY:
             loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/Kietdepzaitest/refs/heads/main/Lag"))()
         end 
     }
-}
+    {
 -- =====================================================================
 -- ⛔ KHÔNG CẦN CHỈNH SỬA PHẦN DƯỚI NÀY (HỆ THỐNG GIAO DIỆN & HIỆU ỨNG)
 -- =====================================================================
