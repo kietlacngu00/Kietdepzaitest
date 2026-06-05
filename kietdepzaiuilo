@@ -57,7 +57,7 @@ local HubScripts = {
             -- CHÈN LINK SCRIPT HOẶC CODE CỦA V3 VÀO DƯỚI DÒNG NÀY:
             loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/Kietdepzaitest/refs/heads/main/Maxlevl"))()
         end 
-    }
+    },
     {
     {ID = "V6", 
         Name = "KIETDEPZAI HUB V6", 
@@ -67,7 +67,7 @@ local HubScripts = {
             loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/Kietdepzaitest/refs/heads/main/Lag"))()
         end 
     }
-    {
+}
 -- =====================================================================
 -- ⛔ KHÔNG CẦN CHỈNH SỬA PHẦN DƯỚI NÀY (HỆ THỐNG GIAO DIỆN & HIỆU ỨNG)
 -- =====================================================================
