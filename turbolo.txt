@@ -1,0 +1,714 @@
+--[[
+    Turbo Lite Hub V3 - Optimized
+    Tham khảo từ TurboLiteHubV2.lua
+    Tối ưu hiệu suất, thêm cooldown check, cache system
+--]]
+
+-- ========================================
+-- SERVICES CACHE
+-- ========================================
+local Services = setmetatable({}, {
+    __index = function(self, serviceName)
+        local service = game:GetService(serviceName)
+        rawset(self, serviceName, service)
+        return service
+    end
+})
+
+local Players = Services.Players
+local ReplicatedStorage = Services.ReplicatedStorage
+local Workspace = Services.Workspace
+local Lighting = Services.Lighting
+local RunService = Services.RunService
+local TweenService = Services.TweenService
+local VirtualInputManager = Services.VirtualInputManager
+local VirtualUser = Services.VirtualUser
+local HttpService = Services.HttpService
+local CollectionService = Services.CollectionService
+local TeleportService = Services.TeleportService
+local UserInputService = Services.UserInputService
+
+local player = Players.LocalPlayer
+local commE = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CommE")
+local commF = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CommF_")
+local net = ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Net")
+
+-- ========================================
+-- SAVE SYSTEM
+-- ========================================
+local FolderName = "Turbo Lite Hub"
+local FileName = "Settings.json"
+local FullPath = FolderName .. "/" .. FileName
+
+if makefolder and not isfolder(FolderName) then makefolder(FolderName) end
+
+_G.SaveData = _G.SaveData or {}
+
+local function SaveSettings()
+    if not writefile then return false end
+    local success = pcall(function()
+        writefile(FullPath, HttpService:JSONEncode(_G.SaveData))
+    end)
+    return success
+end
+
+local function LoadSettings()
+    if not (isfile and isfile(FullPath)) then return false end
+    local success, result = pcall(function()
+        return HttpService:JSONDecode(readfile(FullPath))
+    end)
+    if success and result then _G.SaveData = result return true end
+    return false
+end
+
+local function GetSetting(name, default)
+    return _G.SaveData[name] ~= nil and _G.SaveData[name] or default
+end
+
+LoadSettings()
+
+-- ========================================
+-- GLOBAL CONFIG
+-- ========================================
+_G.MobHeight = _G.MobHeight or 30
+_G.BringRange = _G.BringRange or 250
+_G.MaxBringMobs = _G.MaxBringMobs or 15
+_G.SelectWeapon = _G.SelectWeapon or "Melee"
+_G.AutoKen = GetSetting("AutoKen", true)
+_G.StartFarm = GetSetting("StartFarm", false)
+_G.Level = GetSetting("Level", false)
+_G.AcceptQuest = GetSetting("AcceptQuest", false)
+
+-- ========================================
+-- UTILITY FUNCTIONS
+-- ========================================
+local function HasKen()
+    local char = player.Character
+    return char and CollectionService:HasTag(char, "Ken")
+end
+
+local function EquipWeapon(weaponName)
+    if not weaponName then return end
+    local char = player.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    local tool = player.Backpack:FindFirstChild(weaponName) or char:FindFirstChild(weaponName)
+    if tool and tool.Parent ~= char then
+        hum:EquipTool(tool)
+    end
+end
+
+local function UseSkill(category, key)
+    EquipWeapon(_G.SelectWeapon)
+    local keys = {Z = "Z", X = "X", C = "C", V = "V", F = "F"}
+    if keys[key] then
+        VirtualInputManager:SendKeyEvent(true, keys[key], false, game)
+        task.wait(0.05)
+        VirtualInputManager:SendKeyEvent(false, keys[key], false, game)
+    end
+end
+
+local function IsAlive(entity)
+    local hum = entity and entity:FindFirstChild("Humanoid")
+    return hum and hum.Health > 0
+end
+
+local function GetClosestEnemy(enemyList, maxDistance)
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil end
+    
+    local closest, shortest = nil, math.huge
+    for _, enemy in pairs(enemyList) do
+        if IsAlive(enemy) then
+            local root = enemy:FindFirstChild("HumanoidRootPart")
+            if root then
+                local dist = (root.Position - hrp.Position).Magnitude
+                if dist < shortest and dist <= maxDistance then
+                    shortest = dist
+                    closest = enemy
+                end
+            end
+        end
+    end
+    return closest
+end
+
+local function TeleportTo(targetCFrame)
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp and targetCFrame then
+        hrp.CFrame = targetCFrame
+    end
+end
+
+-- ========================================
+-- AUTO KEN LOOP
+-- ========================================
+task.spawn(function()
+    while _G.AutoKen do
+        task.wait(0.3)
+        if not HasKen() then
+            pcall(function() commE:FireServer("Ken", true) end)
+        end
+    end
+end)
+
+-- ========================================
+-- TEAM & LIGHTING
+-- ========================================
+pcall(function()
+    if not player.Team or player.Team.Name ~= "Marines" then
+        commF:InvokeServer("SetTeam", "Marines")
+    end
+end)
+
+Lighting.Ambient = Color3.new(0.695, 0.695, 0.695)
+Lighting.ColorShift_Bottom = Color3.new(0.695, 0.695, 0.695)
+Lighting.ColorShift_Top = Color3.new(0.695, 0.695, 0.695)
+Lighting.Brightness = 2
+Lighting.FogEnd = 1e10
+Lighting.GlobalShadows = false
+
+-- ========================================
+-- WORLD DETECTION
+-- ========================================
+local placeId = game.PlaceId
+local World1 = placeId == 2753915549 or placeId == 85211729168715
+local World2 = placeId == 4442272183 or placeId == 79091703265657
+local World3 = placeId == 7449423635 or placeId == 100117331123089
+
+if not (World1 or World2 or World3) then
+    player:Kick("World not supported")
+end
+
+-- ========================================
+-- QUEST SYSTEM (Optimized)
+-- ========================================
+local QuestData = {}
+
+if World1 then
+    QuestData = {
+        [1] = {Mon = "Bandit", Qname = "BanditQuest1", Qdata = 1, PosQ = CFrame.new(1045.96, 27.00, 1560.82), PosM = CFrame.new(1045.96, 27.00, 1560.82)},
+        [10] = {Mon = "Monkey", Qname = "JungleQuest", Qdata = 1, PosQ = CFrame.new(-1598.08, 35.55, 153.37), PosM = CFrame.new(-1448.51, 67.85, 11.46)},
+        [15] = {Mon = "Gorilla", Qname = "JungleQuest", Qdata = 2, PosQ = CFrame.new(-1598.08, 35.55, 153.37), PosM = CFrame.new(-1129.88, 40.46, -525.42)},
+        [30] = {Mon = "Pirate", Qname = "BuggyQuest1", Qdata = 1, PosQ = CFrame.new(-1141.07, 4.10, 3831.54), PosM = CFrame.new(-1103.51, 13.75, 3896.09)},
+        [40] = {Mon = "Brute", Qname = "BuggyQuest1", Qdata = 2, PosQ = CFrame.new(-1141.07, 4.10, 3831.54), PosM = CFrame.new(-1140.08, 14.80, 4322.92)},
+        [60] = {Mon = "Desert Bandit", Qname = "DesertQuest", Qdata = 1, PosQ = CFrame.new(894.48, 5.14, 4392.43), PosM = CFrame.new(924.79, 6.44, 4481.58)},
+        [75] = {Mon = "Desert Officer", Qname = "DesertQuest", Qdata = 2, PosQ = CFrame.new(894.48, 5.14, 4392.43), PosM = CFrame.new(1608.28, 8.61, 4371.00)},
+        [90] = {Mon = "Snow Bandit", Qname = "SnowQuest", Qdata = 1, PosQ = CFrame.new(1389.74, 88.15, -1298.90), PosM = CFrame.new(1354.34, 87.27, -1393.94)},
+        [100] = {Mon = "Snowman", Qname = "SnowQuest", Qdata = 2, PosQ = CFrame.new(1389.74, 88.15, -1298.90), PosM = CFrame.new(1201.64, 144.57, -1550.06)},
+        [120] = {Mon = "Chief Petty Officer", Qname = "MarineQuest2", Qdata = 1, PosQ = CFrame.new(-5039.58, 27.35, 4324.68), PosM = CFrame.new(-4881.23, 22.65, 4273.75)},
+        [150] = {Mon = "Sky Bandit", Qname = "SkyQuest", Qdata = 1, PosQ = CFrame.new(-4839.53, 716.36, -2619.44), PosM = CFrame.new(-4953.20, 295.74, -2899.22)},
+        [175] = {Mon = "Dark Master", Qname = "SkyQuest", Qdata = 2, PosQ = CFrame.new(-4839.53, 716.36, -2619.44), PosM = CFrame.new(-5259.84, 391.39, -2229.03)},
+        [190] = {Mon = "Prisoner", Qname = "PrisonerQuest", Qdata = 1, PosQ = CFrame.new(5308.93, 1.65, 475.12), PosM = CFrame.new(5098.97, -0.32, 474.23)},
+        [210] = {Mon = "Dangerous Prisoner", Qname = "PrisonerQuest", Qdata = 2, PosQ = CFrame.new(5308.93, 1.65, 475.12), PosM = CFrame.new(5654.56, 15.63, 866.29)},
+        [250] = {Mon = "Toga Warrior", Qname = "ColosseumQuest", Qdata = 1, PosQ = CFrame.new(-1580.04, 6.35, -2986.47), PosM = CFrame.new(-1820.21, 51.68, -2740.66)},
+        [275] = {Mon = "Gladiator", Qname = "ColosseumQuest", Qdata = 2, PosQ = CFrame.new(-1580.04, 6.35, -2986.47), PosM = CFrame.new(-1292.83, 56.38, -3339.03)},
+        [300] = {Mon = "Military Soldier", Qname = "MagmaQuest", Qdata = 1, PosQ = CFrame.new(-5313.37, 10.95, 8515.29), PosM = CFrame.new(-5411.16, 11.08, 8454.29)},
+        [325] = {Mon = "Military Spy", Qname = "MagmaQuest", Qdata = 2, PosQ = CFrame.new(-5313.37, 10.95, 8515.29), PosM = CFrame.new(-5802.86, 86.26, 8828.85)},
+        [375] = {Mon = "Fishman Warrior", Qname = "FishmanQuest", Qdata = 1, PosQ = CFrame.new(61122.65, 18.49, 1569.39), PosM = CFrame.new(60878.30, 18.48, 1543.75)},
+        [400] = {Mon = "Fishman Commando", Qname = "FishmanQuest", Qdata = 2, PosQ = CFrame.new(61122.65, 18.49, 1569.39), PosM = CFrame.new(61922.63, 18.48, 1493.93)},
+        [450] = {Mon = "God's Guard", Qname = "SkyExp1Quest", Qdata = 1, PosQ = CFrame.new(-4721.88, 843.87, -1949.96), PosM = CFrame.new(-4710.04, 845.27, -1927.30)},
+        [475] = {Mon = "Shanda", Qname = "SkyExp1Quest", Qdata = 2, PosQ = CFrame.new(-7859.09, 5544.19, -381.47), PosM = CFrame.new(-7678.48, 5566.40, -497.21)},
+        [525] = {Mon = "Royal Squad", Qname = "SkyExp2Quest", Qdata = 1, PosQ = CFrame.new(-7906.81, 5634.66, -1411.99), PosM = CFrame.new(-7624.25, 5658.13, -1467.35)},
+        [550] = {Mon = "Royal Soldier", Qname = "SkyExp2Quest", Qdata = 2, PosQ = CFrame.new(-7906.81, 5634.66, -1411.99), PosM = CFrame.new(-7836.75, 5645.66, -1790.62)},
+        [625] = {Mon = "Galley Pirate", Qname = "FountainQuest", Qdata = 1, PosQ = CFrame.new(5259.81, 37.35, 4050.02), PosM = CFrame.new(5551.02, 78.90, 3930.41)},
+        [650] = {Mon = "Galley Captain", Qname = "FountainQuest", Qdata = 2, PosQ = CFrame.new(5259.81, 37.35, 4050.02), PosM = CFrame.new(5441.95, 42.50, 4950.09)},
+    }
+elseif World2 then
+    QuestData = {
+        [700] = {Mon = "Raider", Qname = "Area1Quest", Qdata = 1, PosQ = CFrame.new(-429.54, 71.76, 1836.18), PosM = CFrame.new(-728.32, 52.77, 2345.77)},
+        [725] = {Mon = "Mercenary", Qname = "Area1Quest", Qdata = 2, PosQ = CFrame.new(-429.54, 71.76, 1836.18), PosM = CFrame.new(-1004.32, 80.15, 1424.61)},
+        [775] = {Mon = "Swan Pirate", Qname = "Area2Quest", Qdata = 1, PosQ = CFrame.new(638.43, 71.76, 918.28), PosM = CFrame.new(1068.66, 137.61, 1322.10)},
+        [800] = {Mon = "Factory Staff", Qname = "Area2Quest", Qdata = 2, PosQ = CFrame.new(632.69, 73.10, 918.66), PosM = CFrame.new(73.07, 81.86, -27.47)},
+        [875] = {Mon = "Marine Lieutenant", Qname = "MarineQuest3", Qdata = 1, PosQ = CFrame.new(-2440.79, 71.71, -3216.06), PosM = CFrame.new(-2821.37, 75.89, -3070.08)},
+        [900] = {Mon = "Marine Captain", Qname = "MarineQuest3", Qdata = 2, PosQ = CFrame.new(-2440.79, 71.71, -3216.06), PosM = CFrame.new(-1861.23, 80.17, -3254.69)},
+        [950] = {Mon = "Zombie", Qname = "ZombieQuest", Qdata = 1, PosQ = CFrame.new(-5497.06, 47.59, -795.23), PosM = CFrame.new(-5657.77, 78.96, -928.68)},
+        [975] = {Mon = "Vampire", Qname = "ZombieQuest", Qdata = 2, PosQ = CFrame.new(-5497.06, 47.59, -795.23), PosM = CFrame.new(-6037.66, 32.18, -1340.65)},
+        [1000] = {Mon = "Snow Trooper", Qname = "SnowMountainQuest", Qdata = 1, PosQ = CFrame.new(609.85, 400.11, -5372.25), PosM = CFrame.new(549.14, 427.38, -5563.69)},
+        [1050] = {Mon = "Winter Warrior", Qname = "SnowMountainQuest", Qdata = 2, PosQ = CFrame.new(609.85, 400.11, -5372.25), PosM = CFrame.new(1142.74, 475.63, -5199.41)},
+        [1100] = {Mon = "Lab Subordinate", Qname = "IceSideQuest", Qdata = 1, PosQ = CFrame.new(-6064.06, 15.24, -4902.97), PosM = CFrame.new(-5707.47, 15.95, -4513.39)},
+        [1125] = {Mon = "Horned Warrior", Qname = "IceSideQuest", Qdata = 2, PosQ = CFrame.new(-6064.06, 15.24, -4902.97), PosM = CFrame.new(-6341.36, 15.95, -5723.16)},
+        [1175] = {Mon = "Magma Ninja", Qname = "FireSideQuest", Qdata = 1, PosQ = CFrame.new(-5428.03, 15.06, -5299.43), PosM = CFrame.new(-5449.67, 76.65, -5808.20)},
+        [1200] = {Mon = "Lava Pirate", Qname = "FireSideQuest", Qdata = 2, PosQ = CFrame.new(-5428.03, 15.06, -5299.43), PosM = CFrame.new(-5213.33, 49.73, -4701.45)},
+        [1250] = {Mon = "Ship Deckhand", Qname = "ShipQuest1", Qdata = 1, PosQ = CFrame.new(1037.80, 125.09, 32911.60), PosM = CFrame.new(1212.01, 150.79, 33059.24)},
+        [1275] = {Mon = "Ship Engineer", Qname = "ShipQuest1", Qdata = 2, PosQ = CFrame.new(1037.80, 125.09, 32911.60), PosM = CFrame.new(919.47, 43.54, 32779.96)},
+        [1300] = {Mon = "Ship Steward", Qname = "ShipQuest2", Qdata = 1, PosQ = CFrame.new(968.80, 125.09, 33244.12), PosM = CFrame.new(919.43, 129.55, 33436.03)},
+        [1325] = {Mon = "Ship Officer", Qname = "ShipQuest2", Qdata = 2, PosQ = CFrame.new(968.80, 125.09, 33244.12), PosM = CFrame.new(1036.01, 181.43, 33315.72)},
+        [1350] = {Mon = "Arctic Warrior", Qname = "FrostQuest", Qdata = 1, PosQ = CFrame.new(5667.65, 26.79, -6486.08), PosM = CFrame.new(5966.24, 62.97, -6179.38)},
+        [1375] = {Mon = "Snow Lurker", Qname = "FrostQuest", Qdata = 2, PosQ = CFrame.new(5667.65, 26.79, -6486.08), PosM = CFrame.new(5407.07, 69.19, -6880.88)},
+        [1425] = {Mon = "Sea Soldier", Qname = "ForgottenQuest", Qdata = 1, PosQ = CFrame.new(-3054.44, 235.54, -10142.81), PosM = CFrame.new(-3028.22, 64.67, -9775.42)},
+        [1450] = {Mon = "Water Fighter", Qname = "ForgottenQuest", Qdata = 2, PosQ = CFrame.new(-3054.44, 235.54, -10142.81), PosM = CFrame.new(-3352.90, 285.01, -10534.84)},
+    }
+elseif World3 then
+    QuestData = {
+        [1500] = {Mon = "Pirate Millionaire", Qname = "PiratePortQuest", Qdata = 1, PosQ = CFrame.new(-290.07, 42.90, 5581.59), PosM = CFrame.new(-246.00, 47.31, 5584.10)},
+        [1525] = {Mon = "Pistol Billionaire", Qname = "PiratePortQuest", Qdata = 2, PosQ = CFrame.new(-290.07, 42.90, 5581.59), PosM = CFrame.new(-187.33, 86.24, 6013.51)},
+        [1575] = {Mon = "Dragon Crew Warrior", Qname = "DragonCrewQuest", Qdata = 1, PosQ = CFrame.new(6737.06, 127.41, -712.30), PosM = CFrame.new(6709.76, 52.34, -1139.02)},
+        [1600] = {Mon = "Dragon Crew Archer", Qname = "DragonCrewQuest", Qdata = 2, PosQ = CFrame.new(6737.06, 127.41, -712.30), PosM = CFrame.new(6668.76, 481.37, 329.12)},
+        [1625] = {Mon = "Hydra Enforcer", Qname = "VenomCrewQuest", Qdata = 1, PosQ = CFrame.new(5206.40, 1004.10, 748.35), PosM = CFrame.new(4547.11, 1003.10, 334.19)},
+        [1650] = {Mon = "Venomous Assailant", Qname = "VenomCrewQuest", Qdata = 2, PosQ = CFrame.new(5206.40, 1004.10, 748.35), PosM = CFrame.new(4674.92, 1134.82, 996.30)},
+        [1700] = {Mon = "Marine Commodore", Qname = "MarineTreeIsland", Qdata = 1, PosQ = CFrame.new(2180.54, 27.81, -6741.54), PosM = CFrame.new(2286.00, 73.13, -7159.80)},
+        [1725] = {Mon = "Marine Rear Admiral", Qname = "MarineTreeIsland", Qdata = 2, PosQ = CFrame.new(2179.98, 28.73, -6740.05), PosM = CFrame.new(3656.77, 160.52, -7001.59)},
+        [1775] = {Mon = "Fishman Raider", Qname = "DeepForestIsland3", Qdata = 1, PosQ = CFrame.new(-10581.65, 330.87, -8761.18), PosM = CFrame.new(-10407.52, 331.76, -8368.51)},
+        [1800] = {Mon = "Fishman Captain", Qname = "DeepForestIsland3", Qdata = 2, PosQ = CFrame.new(-10581.65, 330.87, -8761.18), PosM = CFrame.new(-10994.70, 352.38, -9002.11)},
+        [1825] = {Mon = "Forest Pirate", Qname = "DeepForestIsland", Qdata = 1, PosQ = CFrame.new(-13234.04, 331.48, -7625.40), PosM = CFrame.new(-13274.47, 332.37, -7769.58)},
+        [1850] = {Mon = "Mythological Pirate", Qname = "DeepForestIsland", Qdata = 2, PosQ = CFrame.new(-13234.04, 331.48, -7625.40), PosM = CFrame.new(-13680.60, 501.08, -6991.18)},
+        [1900] = {Mon = "Jungle Pirate", Qname = "DeepForestIsland2", Qdata = 1, PosQ = CFrame.new(-12680.38, 389.97, -9902.01), PosM = CFrame.new(-12256.16, 331.73, -10485.83)},
+        [1925] = {Mon = "Musketeer Pirate", Qname = "DeepForestIsland2", Qdata = 2, PosQ = CFrame.new(-12680.38, 389.97, -9902.01), PosM = CFrame.new(-13457.90, 391.54, -9859.17)},
+        [1975] = {Mon = "Reborn Skeleton", Qname = "HauntedQuest1", Qdata = 1, PosQ = CFrame.new(-9479.21, 141.21, 5566.09), PosM = CFrame.new(-8763.72, 165.72, 6159.86)},
+        [2000] = {Mon = "Living Zombie", Qname = "HauntedQuest1", Qdata = 2, PosQ = CFrame.new(-9479.21, 141.21, 5566.09), PosM = CFrame.new(-10144.13, 138.62, 5838.08)},
+        [2025] = {Mon = "Demonic Soul", Qname = "HauntedQuest2", Qdata = 1, PosQ = CFrame.new(-9516.99, 172.01, 6078.46), PosM = CFrame.new(-9505.87, 172.10, 6158.99)},
+        [2050] = {Mon = "Posessed Mummy", Qname = "HauntedQuest2", Qdata = 2, PosQ = CFrame.new(-9516.99, 172.01, 6078.46), PosM = CFrame.new(-9582.02, 6.25, 6205.47)},
+        [2075] = {Mon = "Peanut Scout", Qname = "NutsIslandQuest", Qdata = 1, PosQ = CFrame.new(-2104.39, 38.10, -10194.21), PosM = CFrame.new(-2143.24, 47.72, -10029.99)},
+        [2100] = {Mon = "Peanut President", Qname = "NutsIslandQuest", Qdata = 2, PosQ = CFrame.new(-2104.39, 38.10, -10194.21), PosM = CFrame.new(-1859.35, 38.10, -10422.42)},
+        [2125] = {Mon = "Ice Cream Chef", Qname = "IceCreamIslandQuest", Qdata = 1, PosQ = CFrame.new(-820.64, 65.81, -10965.79), PosM = CFrame.new(-872.24, 65.81, -10919.95)},
+        [2150] = {Mon = "Ice Cream Commander", Qname = "IceCreamIslandQuest", Qdata = 2, PosQ = CFrame.new(-820.64, 65.81, -10965.79), PosM = CFrame.new(-558.06, 112.04, -11290.77)},
+        [2200] = {Mon = "Cookie Crafter", Qname = "CakeQuest1", Qdata = 1, PosQ = CFrame.new(-2021.32, 37.79, -12028.72), PosM = CFrame.new(-2374.13, 37.79, -12125.30)},
+        [2225] = {Mon = "Cake Guard", Qname = "CakeQuest1", Qdata = 2, PosQ = CFrame.new(-2021.32, 37.79, -12028.72), PosM = CFrame.new(-1598.30, 43.77, -12244.58)},
+        [2250] = {Mon = "Baking Staff", Qname = "CakeQuest2", Qdata = 1, PosQ = CFrame.new(-1927.91, 37.79, -12842.53), PosM = CFrame.new(-1887.80, 77.61, -12998.35)},
+        [2275] = {Mon = "Head Baker", Qname = "CakeQuest2", Qdata = 2, PosQ = CFrame.new(-1927.91, 37.79, -12842.53), PosM = CFrame.new(-2216.18, 82.88, -12869.29)},
+        [2300] = {Mon = "Cocoa Warrior", Qname = "ChocQuest1", Qdata = 1, PosQ = CFrame.new(233.22, 29.87, -12201.23), PosM = CFrame.new(-21.55, 80.57, -12352.38)},
+        [2325] = {Mon = "Chocolate Bar Battler", Qname = "ChocQuest1", Qdata = 2, PosQ = CFrame.new(233.22, 29.87, -12201.23), PosM = CFrame.new(582.59, 77.18, -12463.16)},
+        [2350] = {Mon = "Sweet Thief", Qname = "ChocQuest2", Qdata = 1, PosQ = CFrame.new(150.50, 30.69, -12774.50), PosM = CFrame.new(165.18, 76.05, -12600.83)},
+        [2375] = {Mon = "Candy Rebel", Qname = "ChocQuest2", Qdata = 2, PosQ = CFrame.new(150.50, 30.69, -12774.50), PosM = CFrame.new(134.86, 77.24, -12876.54)},
+        [2400] = {Mon = "Candy Pirate", Qname = "CandyQuest1", Qdata = 1, PosQ = CFrame.new(-1150.04, 20.37, -14446.33), PosM = CFrame.new(-1310.50, 26.01, -14562.40)},
+        [2450] = {Mon = "Isle Outlaw", Qname = "TikiQuest1", Qdata = 1, PosQ = CFrame.new(-16548.81, 55.60, -172.81), PosM = CFrame.new(-16479.90, 226.61, -300.31)},
+        [2475] = {Mon = "Island Boy", Qname = "TikiQuest1", Qdata = 2, PosQ = CFrame.new(-16548.81, 55.60, -172.81), PosM = CFrame.new(-16849.39, 192.86, -150.78)},
+        [2500] = {Mon = "Sun-kissed Warrior", Qname = "TikiQuest2", Qdata = 1, PosQ = CFrame.new(-16538.00, 55.00, 1049.00), PosM = CFrame.new(-16347.00, 64.00, 984.00)},
+        [2525] = {Mon = "Isle Champion", Qname = "TikiQuest2", Qdata = 2, PosQ = CFrame.new(-16541.02, 57.30, 1051.46), PosM = CFrame.new(-16602.10, 130.38, 1087.24)},
+        [2550] = {Mon = "Serpent Hunter", Qname = "TikiQuest3", Qdata = 1, PosQ = CFrame.new(-16665.08, 105.27, 1577.61), PosM = CFrame.new(-16645.64, 163.09, 1352.87)},
+        [2575] = {Mon = "Skull Slayer", Qname = "TikiQuest3", Qdata = 2, PosQ = CFrame.new(-16665.08, 105.27, 1577.61), PosM = CFrame.new(-16709.49, 419.68, 1751.09)},
+    }
+end
+
+local function GetCurrentQuestData()
+    local level = player.Data.Level.Value
+    local bestLevel = 0
+    local bestData = nil
+    
+    for reqLevel, data in pairs(QuestData) do
+        if level >= reqLevel and reqLevel > bestLevel then
+            bestLevel = reqLevel
+            bestData = data
+        end
+    end
+    
+    return bestData
+end
+
+-- ========================================
+-- FARM LOOP (Optimized)
+-- ========================================
+local currentTarget = nil
+local lastAttackTime = 0
+local ATTACK_COOLDOWN = 0.15
+
+task.spawn(function()
+    while _G.StartFarm and _G.Level do
+        pcall(function()
+            local char = player.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if not hrp then task.wait(1) return end
+            
+            local questData = GetCurrentQuestData()
+            if not questData then task.wait(1) return end
+            
+            local questUI = player.PlayerGui:FindFirstChild("Main") and player.PlayerGui.Main:FindFirstChild("Quest")
+            local hasQuest = questUI and questUI.Visible
+            
+            -- Accept quest
+            if _G.AcceptQuest and not hasQuest then
+                if (hrp.Position - questData.PosQ.Position).Magnitude > 10 then
+                    TeleportTo(questData.PosQ)
+                else
+                    task.wait(0.5)
+                    commF:InvokeServer("StartQuest", questData.Qname, questData.Qdata)
+                end
+                return
+            end
+            
+            -- Find and attack enemy
+            if not currentTarget or not IsAlive(currentTarget) then
+                currentTarget = GetClosestEnemy(Workspace.Enemies:GetChildren(), 250)
+            end
+            
+            if currentTarget and IsAlive(currentTarget) then
+                local root = currentTarget:FindFirstChild("HumanoidRootPart")
+                if root then
+                    if (hrp.Position - root.Position).Magnitude > 15 then
+                        TeleportTo(root.CFrame * CFrame.new(0, _G.MobHeight, 0))
+                    end
+                    
+                    if tick() - lastAttackTime >= ATTACK_COOLDOWN then
+                        UseSkill(_G.SelectWeapon, "Z")
+                        UseSkill(_G.SelectWeapon, "X")
+                        UseSkill(_G.SelectWeapon, "C")
+                        lastAttackTime = tick()
+                    end
+                end
+            else
+                TeleportTo(questData.PosM)
+            end
+        end)
+        task.wait(0.1)
+    end
+end)
+
+-- ========================================
+-- BRING MOBS SYSTEM (Optimized)
+-- ========================================
+local bringEnabled = GetSetting("BringMobs", true)
+local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+
+local function BringEnemies(targetPos)
+    if not bringEnabled or not _G.StartFarm then return end
+    
+    local count = 0
+    for _, mob in pairs(Workspace.Enemies:GetChildren()) do
+        if count >= _G.MaxBringMobs then break end
+        
+        local hum = mob:FindFirstChild("Humanoid")
+        local root = mob:FindFirstChild("HumanoidRootPart")
+        
+        if hum and root and hum.Health > 0 and not root:GetAttribute("Tweening") then
+            local dist = (root.Position - targetPos).Magnitude
+            if dist <= _G.BringRange then
+                count = count + 1
+                root:SetAttribute("Tweening", true)
+                
+                local tween = TweenService:Create(root, tweenInfo, {CFrame = CFrame.new(targetPos)})
+                tween:Play()
+                tween.Completed:Once(function()
+                    if root then root:SetAttribute("Tweening", false) end
+                end)
+            end
+        end
+    end
+end
+
+task.spawn(function()
+    while true do
+        if bringEnabled and _G.StartFarm then
+            local char = player.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                BringEnemies(hrp.Position)
+            end
+        end
+        task.wait(1)
+    end
+end)
+
+-- ========================================
+-- AUTO ATTACK (Fast Attack)
+-- ========================================
+local autoAttackEnabled = GetSetting("AutoAttack", true)
+
+local function GetNearbyEnemies()
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return {} end
+    
+    local enemies = {}
+    for _, mob in pairs(Workspace.Enemies:GetChildren()) do
+        if IsAlive(mob) then
+            local root = mob:FindFirstChild("HumanoidRootPart")
+            if root and (root.Position - hrp.Position).Magnitude <= 60 then
+                table.insert(enemies, {mob, root})
+            end
+        end
+    end
+    return enemies
+end
+
+local registerAttack = net:WaitForChild("RE/RegisterAttack")
+local registerHit = net:WaitForChild("RE/RegisterHit")
+
+task.spawn(function()
+    while autoAttackEnabled and _G.StartFarm do
+        local enemies = GetNearbyEnemies()
+        if #enemies > 0 then
+            pcall(function()
+                registerAttack:FireServer(-math.huge)
+                local hitData = {nil, {}}
+                for i, data in ipairs(enemies) do
+                    if not hitData[1] then hitData[1] = data[1].Head end
+                    hitData[2][i] = data
+                end
+                registerHit:FireServer(unpack(hitData))
+            end)
+        end
+        task.wait(0.05)
+    end
+end)
+
+-- ========================================
+-- SIMPLE UI (Using Library if available)
+-- ========================================
+local libraryLoaded, Lib = pcall(function()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/TurboLite/Script/refs/heads/main/xRedzLib.lua"))()
+end)
+
+if libraryLoaded and Lib then
+    local mainWindow = Lib:MakeWindow({
+        Title = "Turbo Lite Hub V3",
+        SubTitle = "Optimized | Blox Fruit",
+        SaveFolder = "turbolite_v3.json"
+    })
+    
+    local farmTab = mainWindow:MakeTab({Title = "Farm", Icon = "rbxassetid://127561653320876"})
+    
+    farmTab:AddToggle({
+        Name = "Start Farm",
+        Default = _G.StartFarm,
+        Callback = function(v)
+            _G.StartFarm = v
+            _G.Level = v
+            _G.SaveData["StartFarm"] = v
+            SaveSettings()
+        end
+    })
+    
+    farmTab:AddToggle({
+        Name = "Accept Quest",
+        Default = _G.AcceptQuest,
+        Callback = function(v)
+            _G.AcceptQuest = v
+            _G.SaveData["AcceptQuest"] = v
+            SaveSettings()
+        end
+    })
+    
+    farmTab:AddToggle({
+        Name = "Bring Mobs",
+        Default = bringEnabled,
+        Callback = function(v)
+            bringEnabled = v
+            _G.SaveData["BringMobs"] = v
+            SaveSettings()
+        end
+    })
+    
+    farmTab:AddToggle({
+        Name = "Auto Attack",
+        Default = autoAttackEnabled,
+        Callback = function(v)
+            autoAttackEnabled = v
+            _G.SaveData["AutoAttack"] = v
+            SaveSettings()
+        end
+    })
+    
+    farmTab:AddToggle({
+        Name = "Auto Ken (Haki)",
+        Default = _G.AutoKen,
+        Callback = function(v)
+            _G.AutoKen = v
+            _G.SaveData["AutoKen"] = v
+            SaveSettings()
+        end
+    })
+    
+    farmTab:AddTextBox({
+        Name = "Mob Height",
+        Placeholder = "30",
+        Default = tostring(_G.MobHeight),
+        Callback = function(v)
+            local num = tonumber(v)
+            if num and num > 0 then
+                _G.MobHeight = num
+                _G.SaveData["MobHeight"] = num
+                SaveSettings()
+            end
+        end
+    })
+    
+    farmTab:AddTextBox({
+        Name = "Bring Range",
+        Placeholder = "250",
+        Default = tostring(_G.BringRange),
+        Callback = function(v)
+            local num = tonumber(v)
+            if num and num > 0 then
+                _G.BringRange = num
+                _G.SaveData["BringRange"] = num
+                SaveSettings()
+            end
+        end
+    })
+    
+    local settingTab = mainWindow:MakeTab({Title = "Settings", Icon = "rbxassetid://7734053495"})
+    
+    settingTab:AddButton({
+        Name = "Save Settings",
+        Callback = function()
+            SaveSettings()
+            game.StarterGui:SetCore("SendNotification", {
+                Title = "Turbo Lite Hub",
+                Text = "Settings saved!",
+                Duration = 3
+            })
+        end
+    })
+    
+    settingTab:AddButton({
+        Name = "Reset Settings",
+        Callback = function()
+            if isfile and isfile(FullPath) then
+                delfile(FullPath)
+                _G.SaveData = {}
+                game.StarterGui:SetCore("SendNotification", {
+                    Title = "Turbo Lite Hub",
+                    Text = "Settings reset!",
+                    Duration = 3
+                })
+            end
+        end
+    })
+    
+    settingTab:AddButton({
+        Name = "Rejoin Server",
+        Callback = function()
+            TeleportService:Teleport(game.PlaceId, player)
+        end
+    })
+    
+    settingTab:AddButton({
+        Name = "Hop Server",
+        Callback = function()
+            local Http = HttpService
+            local servers = Http:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
+            if servers and servers.data and #servers.data > 0 then
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, servers.data[1].id, player)
+            end
+        end
+    })
+    
+    local espTab = mainWindow:MakeTab({Title = "ESP", Icon = "rbxassetid://11155851001"})
+    
+    espTab:AddToggle({
+        Name = "ESP Players",
+        Default = false,
+        Callback = function(v)
+            _G.PlayerESP = v
+            task.spawn(function()
+                while _G.PlayerESP do
+                    for _, p in pairs(Players:GetPlayers()) do
+                        if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
+                            local head = p.Character.Head
+                            local esp = head:FindFirstChild("PlayerESP")
+                            if not esp then
+                                esp = Instance.new("BillboardGui", head)
+                                esp.Name = "PlayerESP"
+                                esp.Size = UDim2.new(0, 150, 0, 30)
+                                esp.AlwaysOnTop = true
+                                local label = Instance.new("TextLabel", esp)
+                                label.Size = UDim2.new(1, 0, 1, 0)
+                                label.BackgroundTransparency = 1
+                                label.TextColor3 = Color3.fromRGB(255, 0, 0)
+                                label.TextStrokeTransparency = 0
+                                label.Font = Enum.Font.Gotham
+                                label.TextSize = 12
+                            end
+                            esp.TextLabel.Text = p.Name .. " | Lv." .. p.Data.Level.Value
+                        end
+                    end
+                    task.wait(0.5)
+                end
+            end)
+        end
+    end)
+    
+    espTab:AddToggle({
+        Name = "ESP Fruits",
+        Default = false,
+        Callback = function(v)
+            _G.FruitESP = v
+            task.spawn(function()
+                while _G.FruitESP do
+                    for _, obj in pairs(Workspace:GetChildren()) do
+                        if string.find(obj.Name, "Fruit") and obj:FindFirstChild("Handle") then
+                            local handle = obj.Handle
+                            local esp = handle:FindFirstChild("FruitESP")
+                            if not esp then
+                                esp = Instance.new("BillboardGui", handle)
+                                esp.Name = "FruitESP"
+                                esp.Size = UDim2.new(0, 100, 0, 25)
+                                esp.AlwaysOnTop = true
+                                local label = Instance.new("TextLabel", esp)
+                                label.Size = UDim2.new(1, 0, 1, 0)
+                                label.BackgroundTransparency = 1
+                                label.TextColor3 = Color3.fromRGB(0, 255, 0)
+                                label.Text = obj.Name
+                                label.Font = Enum.Font.Gotham
+                                label.TextSize = 11
+                            end
+                        end
+                    end
+                    task.wait(1)
+                end
+            end)
+        end
+    end)
+    
+    print("Turbo Lite Hub V3 loaded successfully!")
+else
+    print("Library not loaded, using fallback mode")
+    -- Fallback: tạo GUI đơn giản bằng giao diện console
+    local StarterGui = game:GetService("StarterGui")
+    StarterGui:SetCore("SendNotification", {
+        Title = "Turbo Lite Hub V3",
+        Text = "Loaded! Use commands: _G.StartFarm = true/false",
+        Duration = 5
+    })
+end
+
+-- ========================================
+-- ANTI AFK
+-- ========================================
+local antiAFK = GetSetting("AntiAFK", true)
+
+if antiAFK then
+    player.Idled:Connect(function()
+        VirtualUser:Button2Down(Vector2.new(0, 0), Workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        VirtualUser:Button2Up(Vector2.new(0, 0), Workspace.CurrentCamera.CFrame)
+    end)
+end
+
+-- ========================================
+-- LOW CPU MODE
+-- ========================================
+local function LowCPU()
+    Workspace.Terrain.WaterWaveSize = 0
+    Workspace.Terrain.WaterWaveSpeed = 0
+    Workspace.Terrain.WaterReflectance = 0
+    Workspace.Terrain.WaterTransparency = 0
+    Lighting.GlobalShadows = false
+    Lighting.FogEnd = 9e9
+    settings().Rendering.QualityLevel = "Level01"
+    
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v:IsA("Part") or v:IsA("Union") then
+            v.Material = "Plastic"
+            v.Reflectance = 0
+        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+            v.Lifetime = NumberRange.new(0)
+        elseif v:IsA("Fire") or v:IsA("SpotLight") or v:IsA("Smoke") then
+            v.Enabled = false
+        end
+    end
+    
+    for _, v in pairs(Lighting:GetChildren()) do
+        if v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("BloomEffect") then
+            v.Enabled = false
+        end
+    end
+end
+
+LowCPU()
+
+print("Turbo Lite Hub V3 - Script loaded successfully!")
