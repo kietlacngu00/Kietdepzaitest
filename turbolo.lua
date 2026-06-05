@@ -1,6 +1,6 @@
 --[[
-    Turbo Lite Hub V3 - Full UI (Rayfield)
-    Tự tạo UI, không phụ thuộc thư viện ngoài
+    Turbo Lite Hub V3 - FIXED
+    Đã sửa lỗi không farm, thêm UI đầy đủ
 --]]
 
 -- ========================================
@@ -16,8 +16,7 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local VirtualUser = game:GetService("VirtualUser")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
-local UserInputService = game:GetService("UserInputService")
-local CoreGui = game:GetService("CoreGui")
+local CollectionService = game:GetService("CollectionService")
 
 local player = Players.LocalPlayer
 local commE = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CommE")
@@ -58,7 +57,7 @@ end
 LoadSettings()
 
 -- ========================================
--- GLOBALS
+-- GLOBALS (có lưu)
 -- ========================================
 _G.MobHeight = GetSetting("MobHeight", 30)
 _G.BringRange = GetSetting("BringRange", 250)
@@ -69,6 +68,7 @@ _G.AcceptQuest = GetSetting("AcceptQuest", false)
 _G.AutoKen = GetSetting("AutoKen", true)
 _G.BringMobs = GetSetting("BringMobs", true)
 _G.AutoAttack = GetSetting("AutoAttack", true)
+_G.FarmMode = GetSetting("FarmMode", "Level") -- Level, Bone, Cake
 
 -- ========================================
 -- WORLD DETECTION
@@ -87,7 +87,7 @@ end
 -- ========================================
 local function HasKen()
     local char = player.Character
-    return char and char:FindFirstChild("Ken")
+    return char and CollectionService:HasTag(char, "Ken")
 end
 
 local function EquipWeapon(weaponName)
@@ -103,9 +103,11 @@ local function EquipWeapon(weaponName)
 end
 
 local function UseSkill(key)
-    VirtualInputManager:SendKeyEvent(true, key, false, game)
-    task.wait(0.05)
-    VirtualInputManager:SendKeyEvent(false, key, false, game)
+    pcall(function()
+        VirtualInputManager:SendKeyEvent(true, key, false, game)
+        task.wait(0.03)
+        VirtualInputManager:SendKeyEvent(false, key, false, game)
+    end)
 end
 
 local function IsAlive(entity)
@@ -134,21 +136,30 @@ task.spawn(function()
 end)
 
 -- ========================================
--- TEAM & LIGHTING
+-- TEAM (chỉ set 1 lần)
 -- ========================================
-pcall(function()
-    if not player.Team or player.Team.Name ~= "Marines" then
-        commF:InvokeServer("SetTeam", "Marines")
+task.spawn(function()
+    task.wait(2)
+    if player.Team then
+        if player.Team.Name ~= "Marines" then
+            pcall(function() commF:InvokeServer("SetTeam", "Marines") end)
+        end
+    else
+        pcall(function() commF:InvokeServer("SetTeam", "Marines") end)
     end
 end)
 
+-- ========================================
+-- LIGHTING (full bright)
+-- ========================================
 Lighting.Ambient = Color3.new(0.695, 0.695, 0.695)
 Lighting.Brightness = 2
-Lighting.FogEnd = 1e10
+Lighting.FogEnd = 9e9
 Lighting.GlobalShadows = false
+Lighting.ClockTime = 12
 
 -- ========================================
--- QUEST DATA (Rút gọn)
+-- QUEST DATA
 -- ========================================
 local QuestData = {}
 
@@ -223,70 +234,203 @@ local function GetCurrentQuest()
 end
 
 -- ========================================
--- FARM LOOP
+-- BONE FARM MODE
+-- ========================================
+local BoneMobs = {"Reborn Skeleton", "Living Zombie", "Demonic Soul", "Posessed Mummy"}
+local BoneQuestPos = CFrame.new(-9516.99, 172.01, 6078.46)
+local BoneFarmPos = CFrame.new(-9495.68, 453.58, 5977.34)
+
+-- ========================================
+-- CAKE FARM MODE
+-- ========================================
+local CakeMobs = {"Cookie Crafter", "Cake Guard", "Baking Staff", "Head Baker"}
+local CakeQuestPos = CFrame.new(-1927.91, 37.79, -12842.53)
+local CakeFarmPos = CFrame.new(-1943.67, 251.5, -12337.88)
+
+-- ========================================
+-- FARM LOOP CHÍNH (QUAN TRỌNG NHẤT)
 -- ========================================
 local currentTarget = nil
 local lastAttack = 0
+local lastTeleport = 0
 
 task.spawn(function()
-    while _G.StartFarm do
-        pcall(function()
-            local char = player.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            if not hrp then task.wait(1) return end
-            
-            local quest = GetCurrentQuest()
-            if not quest then task.wait(1) return end
-            
-            local questUI = player.PlayerGui:FindFirstChild("Main") and player.PlayerGui.Main:FindFirstChild("Quest")
-            local hasQuest = questUI and questUI.Visible
-            
-            if _G.AcceptQuest and not hasQuest then
-                if (hrp.Position - quest.PosQ.Position).Magnitude > 10 then
-                    TeleportTo(quest.PosQ)
-                else
-                    task.wait(0.5)
-                    commF:InvokeServer("StartQuest", quest.Qname, quest.Qdata)
+    while true do
+        if _G.StartFarm then
+            pcall(function()
+                local char = player.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                if not hrp then 
+                    task.wait(1) 
+                    return 
                 end
-                return
-            end
-            
-            if not currentTarget or not IsAlive(currentTarget) then
-                local closest = nil
-                local shortest = math.huge
-                for _, mob in pairs(Workspace.Enemies:GetChildren()) do
-                    if IsAlive(mob) and mob.Name == quest.Mon then
-                        local root = mob:FindFirstChild("HumanoidRootPart")
-                        if root then
-                            local dist = (root.Position - hrp.Position).Magnitude
-                            if dist < shortest then
-                                shortest = dist
-                                closest = mob
+                
+                -- ===== MODE BONE =====
+                if _G.FarmMode == "Bone" and World3 then
+                    local questUI = player.PlayerGui:FindFirstChild("Main") and player.PlayerGui.Main:FindFirstChild("Quest")
+                    local hasQuest = questUI and questUI.Visible
+                    
+                    if _G.AcceptQuest and not hasQuest then
+                        if (hrp.Position - BoneQuestPos.Position).Magnitude > 10 then
+                            TeleportTo(BoneQuestPos)
+                        else
+                            task.wait(0.5)
+                            commF:InvokeServer("StartQuest", "HauntedQuest1", 1)
+                        end
+                        return
+                    end
+                    
+                    -- Tìm mob bone gần nhất
+                    local closest = nil
+                    local shortest = math.huge
+                    for _, mob in pairs(Workspace.Enemies:GetChildren()) do
+                        for _, name in pairs(BoneMobs) do
+                            if mob.Name == name and IsAlive(mob) then
+                                local root = mob:FindFirstChild("HumanoidRootPart")
+                                if root then
+                                    local dist = (root.Position - hrp.Position).Magnitude
+                                    if dist < shortest then
+                                        shortest = dist
+                                        closest = mob
+                                    end
+                                end
                             end
                         end
                     end
-                end
-                currentTarget = closest
-            end
-            
-            if currentTarget and IsAlive(currentTarget) then
-                local root = currentTarget:FindFirstChild("HumanoidRootPart")
-                if root then
-                    if (hrp.Position - root.Position).Magnitude > 15 then
-                        TeleportTo(root.CFrame * CFrame.new(0, _G.MobHeight, 0))
+                    
+                    if closest then
+                        local root = closest:FindFirstChild("HumanoidRootPart")
+                        if root then
+                            if (hrp.Position - root.Position).Magnitude > 15 then
+                                TeleportTo(root.CFrame * CFrame.new(0, _G.MobHeight, 0))
+                            end
+                            if tick() - lastAttack > 0.15 then
+                                EquipWeapon(_G.SelectWeapon)
+                                UseSkill("Z")
+                                UseSkill("X")
+                                UseSkill("C")
+                                lastAttack = tick()
+                            end
+                        end
+                    else
+                        TeleportTo(BoneFarmPos)
                     end
-                    if tick() - lastAttack > 0.15 then
-                        EquipWeapon(_G.SelectWeapon)
-                        UseSkill("Z")
-                        UseSkill("X")
-                        UseSkill("C")
-                        lastAttack = tick()
+                    return
+                end
+                
+                -- ===== MODE CAKE =====
+                if _G.FarmMode == "Cake" and World3 then
+                    local questUI = player.PlayerGui:FindFirstChild("Main") and player.PlayerGui.Main:FindFirstChild("Quest")
+                    local hasQuest = questUI and questUI.Visible
+                    
+                    if _G.AcceptQuest and not hasQuest then
+                        if (hrp.Position - CakeQuestPos.Position).Magnitude > 10 then
+                            TeleportTo(CakeQuestPos)
+                        else
+                            task.wait(0.5)
+                            commF:InvokeServer("StartQuest", "CakeQuest1", 1)
+                        end
+                        return
+                    end
+                    
+                    local closest = nil
+                    local shortest = math.huge
+                    for _, mob in pairs(Workspace.Enemies:GetChildren()) do
+                        for _, name in pairs(CakeMobs) do
+                            if mob.Name == name and IsAlive(mob) then
+                                local root = mob:FindFirstChild("HumanoidRootPart")
+                                if root then
+                                    local dist = (root.Position - hrp.Position).Magnitude
+                                    if dist < shortest then
+                                        shortest = dist
+                                        closest = mob
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    
+                    if closest then
+                        local root = closest:FindFirstChild("HumanoidRootPart")
+                        if root then
+                            if (hrp.Position - root.Position).Magnitude > 15 then
+                                TeleportTo(root.CFrame * CFrame.new(0, _G.MobHeight, 0))
+                            end
+                            if tick() - lastAttack > 0.15 then
+                                EquipWeapon(_G.SelectWeapon)
+                                UseSkill("Z")
+                                UseSkill("X")
+                                UseSkill("C")
+                                lastAttack = tick()
+                            end
+                        end
+                    else
+                        TeleportTo(CakeFarmPos)
+                    end
+                    return
+                end
+                
+                -- ===== MODE LEVEL (DEFAULT) =====
+                local quest = GetCurrentQuest()
+                if not quest then 
+                    task.wait(1) 
+                    return 
+                end
+                
+                local questUI = player.PlayerGui:FindFirstChild("Main") and player.PlayerGui.Main:FindFirstChild("Quest")
+                local hasQuest = questUI and questUI.Visible
+                
+                if _G.AcceptQuest and not hasQuest then
+                    if (hrp.Position - quest.PosQ.Position).Magnitude > 10 then
+                        TeleportTo(quest.PosQ)
+                    else
+                        task.wait(0.5)
+                        commF:InvokeServer("StartQuest", quest.Qname, quest.Qdata)
+                    end
+                    return
+                end
+                
+                if not currentTarget or not IsAlive(currentTarget) or currentTarget.Name ~= quest.Mon then
+                    local closest = nil
+                    local shortest = math.huge
+                    for _, mob in pairs(Workspace.Enemies:GetChildren()) do
+                        if mob.Name == quest.Mon and IsAlive(mob) then
+                            local root = mob:FindFirstChild("HumanoidRootPart")
+                            if root then
+                                local dist = (root.Position - hrp.Position).Magnitude
+                                if dist < shortest then
+                                    shortest = dist
+                                    closest = mob
+                                end
+                            end
+                        end
+                    end
+                    currentTarget = closest
+                end
+                
+                if currentTarget and IsAlive(currentTarget) then
+                    local root = currentTarget:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        if (hrp.Position - root.Position).Magnitude > 15 then
+                            TeleportTo(root.CFrame * CFrame.new(0, _G.MobHeight, 0))
+                            lastTeleport = tick()
+                        end
+                        if tick() - lastAttack > 0.15 then
+                            EquipWeapon(_G.SelectWeapon)
+                            UseSkill("Z")
+                            UseSkill("X")
+                            UseSkill("C")
+                            lastAttack = tick()
+                        end
+                    end
+                else
+                    if tick() - lastTeleport > 2 then
+                        TeleportTo(quest.PosM)
+                        lastTeleport = tick()
                     end
                 end
-            else
-                TeleportTo(quest.PosM)
-            end
-        end)
+            end)
+        end
         task.wait(0.1)
     end
 end)
@@ -297,71 +441,79 @@ end)
 local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Linear)
 
 task.spawn(function()
-    while _G.BringMobs and _G.StartFarm do
-        local char = player.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            local count = 0
-            for _, mob in pairs(Workspace.Enemies:GetChildren()) do
-                if count >= _G.MaxBringMobs then break end
-                local hum = mob:FindFirstChild("Humanoid")
-                local root = mob:FindFirstChild("HumanoidRootPart")
-                if hum and root and hum.Health > 0 and not root:GetAttribute("Tweening") then
-                    if (root.Position - hrp.Position).Magnitude <= _G.BringRange then
-                        count = count + 1
-                        root:SetAttribute("Tweening", true)
-                        local tween = TweenService:Create(root, tweenInfo, {CFrame = CFrame.new(hrp.Position)})
-                        tween:Play()
-                        tween.Completed:Once(function()
-                            if root then root:SetAttribute("Tweening", false) end
-                        end)
+    while true do
+        if _G.BringMobs and _G.StartFarm then
+            pcall(function()
+                local char = player.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local count = 0
+                    for _, mob in pairs(Workspace.Enemies:GetChildren()) do
+                        if count >= _G.MaxBringMobs then break end
+                        local hum = mob:FindFirstChild("Humanoid")
+                        local root = mob:FindFirstChild("HumanoidRootPart")
+                        if hum and root and hum.Health > 0 and not root:GetAttribute("Tweening") then
+                            if (root.Position - hrp.Position).Magnitude <= _G.BringRange then
+                                count = count + 1
+                                root:SetAttribute("Tweening", true)
+                                local tween = TweenService:Create(root, tweenInfo, {CFrame = CFrame.new(hrp.Position)})
+                                tween:Play()
+                                tween.Completed:Once(function()
+                                    if root then root:SetAttribute("Tweening", false) end
+                                end)
+                            end
+                        end
                     end
                 end
-            end
+            end)
         end
         task.wait(1)
     end
 end)
 
 -- ========================================
--- AUTO ATTACK (FAST)
+-- AUTO ATTACK (FAST HIT)
 -- ========================================
 local net = ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Net")
 local registerAttack = net:WaitForChild("RE/RegisterAttack")
 local registerHit = net:WaitForChild("RE/RegisterHit")
 
 task.spawn(function()
-    while _G.AutoAttack and _G.StartFarm do
-        local char = player.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            local enemies = {}
-            for _, mob in pairs(Workspace.Enemies:GetChildren()) do
-                if IsAlive(mob) then
-                    local root = mob:FindFirstChild("HumanoidRootPart")
-                    if root and (root.Position - hrp.Position).Magnitude <= 60 then
-                        table.insert(enemies, {mob, root})
+    while true do
+        if _G.AutoAttack and _G.StartFarm then
+            pcall(function()
+                local char = player.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local enemies = {}
+                    for _, mob in pairs(Workspace.Enemies:GetChildren()) do
+                        if IsAlive(mob) then
+                            local root = mob:FindFirstChild("HumanoidRootPart")
+                            if root and (root.Position - hrp.Position).Magnitude <= 60 then
+                                table.insert(enemies, {mob, root})
+                            end
+                        end
+                    end
+                    if #enemies > 0 then
+                        registerAttack:FireServer(-math.huge)
+                        local hitData = {nil, {}}
+                        for i, data in ipairs(enemies) do
+                            if not hitData[1] then 
+                                hitData[1] = data[1]:FindFirstChild("Head") or data[2]
+                            end
+                            hitData[2][i] = data
+                        end
+                        registerHit:FireServer(unpack(hitData))
                     end
                 end
-            end
-            if #enemies > 0 then
-                pcall(function()
-                    registerAttack:FireServer(-math.huge)
-                    local hitData = {nil, {}}
-                    for i, data in ipairs(enemies) do
-                        if not hitData[1] then hitData[1] = data[1].Head end
-                        hitData[2][i] = data
-                    end
-                    registerHit:FireServer(unpack(hitData))
-                end)
-            end
+            end)
         end
         task.wait(0.05)
     end
 end)
 
 -- ========================================
--- UI CREATION (Rayfield)
+-- UI (RAYFIELD) - FULL TABS
 -- ========================================
 local Rayfield = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Rayfield/main/source"))()
 
@@ -377,9 +529,9 @@ local Window = Rayfield:CreateWindow({
     }
 })
 
--- Tab: Farm
+-- Tab Farm
 local FarmTab = Window:CreateTab("Farm", 0)
-local FarmSection = FarmTab:CreateSection("Auto Farm")
+FarmTab:CreateSection("Control")
 
 FarmTab:CreateToggle({
     Name = "Start Farm",
@@ -388,6 +540,23 @@ FarmTab:CreateToggle({
     Callback = function(v)
         _G.StartFarm = v
         _G.SaveData["StartFarm"] = v
+        SaveSettings()
+        Rayfield:Notify({
+            Title = "Farm",
+            Content = v and "Started" or "Stopped",
+            Duration = 1
+        })
+    end
+})
+
+FarmTab:CreateDropdown({
+    Name = "Farm Mode",
+    Options = {"Level", "Bone", "Cake"},
+    CurrentOption = _G.FarmMode,
+    Flag = "FarmMode",
+    Callback = function(v)
+        _G.FarmMode = v
+        _G.SaveData["FarmMode"] = v
         SaveSettings()
     end
 })
@@ -426,7 +595,7 @@ FarmTab:CreateToggle({
 })
 
 FarmTab:CreateToggle({
-    Name = "Auto Ken (Haki)",
+    Name = "Auto Ken",
     CurrentValue = _G.AutoKen,
     Flag = "AutoKen",
     Callback = function(v)
@@ -436,7 +605,7 @@ FarmTab:CreateToggle({
     end
 })
 
-local SettingsSection = FarmTab:CreateSection("Settings")
+FarmTab:CreateSection("Settings")
 
 FarmTab:CreateDropdown({
     Name = "Select Weapon",
@@ -478,68 +647,57 @@ FarmTab:CreateInput({
     end
 })
 
--- Tab: Teleport
+-- Tab Teleport
 local TeleportTab = Window:CreateTab("Teleport", 1)
 
 TeleportTab:CreateButton({
-    Name = "Teleport Sea 1",
+    Name = "Sea 1",
     Callback = function()
         commF:InvokeServer("TravelMain")
     end
 })
 
 TeleportTab:CreateButton({
-    Name = "Teleport Sea 2",
+    Name = "Sea 2",
     Callback = function()
         commF:InvokeServer("TravelDressrosa")
     end
 })
 
 TeleportTab:CreateButton({
-    Name = "Teleport Sea 3",
+    Name = "Sea 3",
     Callback = function()
         commF:InvokeServer("TravelZou")
     end
 })
 
--- Tab: Settings
-local SettingTab = Window:CreateTab("Settings", 2)
+-- Tab Misc
+local MiscTab = Window:CreateTab("Misc", 2)
 
-SettingTab:CreateButton({
-    Name = "Save Settings",
+MiscTab:CreateButton({
+    Name = "Set Team Marines",
     Callback = function()
-        SaveSettings()
-        Rayfield:Notify({
-            Title = "Turbo Lite Hub",
-            Content = "Settings saved!",
-            Duration = 2
-        })
+        commF:InvokeServer("SetTeam", "Marines")
+        Rayfield:Notify({Title = "Team", Content = "Changed to Marines", Duration = 1})
     end
 })
 
-SettingTab:CreateButton({
-    Name = "Reset Settings",
+MiscTab:CreateButton({
+    Name = "Set Team Pirates",
     Callback = function()
-        if isfile and isfile(FullPath) then
-            delfile(FullPath)
-            _G.SaveData = {}
-            Rayfield:Notify({
-                Title = "Turbo Lite Hub",
-                Content = "Settings reset! Restart script",
-                Duration = 3
-            })
-        end
+        commF:InvokeServer("SetTeam", "Pirates")
+        Rayfield:Notify({Title = "Team", Content = "Changed to Pirates", Duration = 1})
     end
 })
 
-SettingTab:CreateButton({
+MiscTab:CreateButton({
     Name = "Rejoin Server",
     Callback = function()
         TeleportService:Teleport(game.PlaceId, player)
     end
 })
 
-SettingTab:CreateButton({
+MiscTab:CreateButton({
     Name = "Hop Server",
     Callback = function()
         local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
@@ -549,109 +707,31 @@ SettingTab:CreateButton({
     end
 })
 
-SettingTab:CreateButton({
-    Name = "Set Team Marines",
+MiscTab:CreateButton({
+    Name = "Save Settings",
     Callback = function()
-        commF:InvokeServer("SetTeam", "Marines")
+        SaveSettings()
+        Rayfield:Notify({Title = "Save", Content = "Settings saved!", Duration = 1})
     end
 })
 
-SettingTab:CreateButton({
-    Name = "Set Team Pirates",
-    Callback = function()
-        commF:InvokeServer("SetTeam", "Pirates")
-    end
-})
-
--- Tab: ESP
-local EspTab = Window:CreateTab("ESP", 3)
-
-EspTab:CreateToggle({
-    Name = "ESP Players",
-    CurrentValue = false,
-    Flag = "ESPPlayers",
-    Callback = function(v)
-        _G.PlayerESP = v
-        task.spawn(function()
-            while _G.PlayerESP do
-                for _, p in pairs(Players:GetPlayers()) do
-                    if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
-                        local head = p.Character.Head
-                        local esp = head:FindFirstChild("PlayerESP")
-                        if not esp then
-                            esp = Instance.new("BillboardGui", head)
-                            esp.Name = "PlayerESP"
-                            esp.Size = UDim2.new(0, 150, 0, 30)
-                            esp.AlwaysOnTop = true
-                            local label = Instance.new("TextLabel", esp)
-                            label.Size = UDim2.new(1, 0, 1, 0)
-                            label.BackgroundTransparency = 1
-                            label.TextColor3 = Color3.fromRGB(255, 0, 0)
-                            label.Text = p.Name .. " | Lv." .. p.Data.Level.Value
-                            label.Font = Enum.Font.Gotham
-                            label.TextSize = 12
-                        end
-                    end
-                end
-                task.wait(0.5)
-            end
-        end)
-    end
-})
-
-EspTab:CreateToggle({
-    Name = "ESP Fruits",
-    CurrentValue = false,
-    Flag = "ESPFruits",
-    Callback = function(v)
-        _G.FruitESP = v
-        task.spawn(function()
-            while _G.FruitESP do
-                for _, obj in pairs(Workspace:GetChildren()) do
-                    if string.find(obj.Name, "Fruit") and obj:FindFirstChild("Handle") then
-                        local handle = obj.Handle
-                        local esp = handle:FindFirstChild("FruitESP")
-                        if not esp then
-                            esp = Instance.new("BillboardGui", handle)
-                            esp.Name = "FruitESP"
-                            esp.Size = UDim2.new(0, 100, 0, 25)
-                            esp.AlwaysOnTop = true
-                            local label = Instance.new("TextLabel", esp)
-                            label.Size = UDim2.new(1, 0, 1, 0)
-                            label.BackgroundTransparency = 1
-                            label.TextColor3 = Color3.fromRGB(0, 255, 0)
-                            label.Text = obj.Name
-                            label.Font = Enum.Font.Gotham
-                            label.TextSize = 11
-                        end
-                    end
-                end
-                task.wait(1)
-            end
-        end)
-    end
-})
-
--- Tab: Info
-local InfoTab = Window:CreateTab("Info", 4)
+-- Tab Info
+local InfoTab = Window:CreateTab("Info", 3)
 
 InfoTab:CreateParagraph({
     Title = "Turbo Lite Hub V3",
-    Content = "Optimized Blox Fruit Script\nWorld: " .. (World1 and "Sea 1" or World2 and "Sea 2" or "Sea 3") .. "\nLevel: " .. player.Data.Level.Value
+    Content = "Optimized Blox Fruit Script\nWorld: " .. (World1 and "Sea 1" or World2 and "Sea 2" or "Sea 3")
 })
 
-InfoTab:CreateParagraph({
+local StatusLabel = InfoTab:CreateParagraph({
     Title = "Status",
-    Content = "Farm: " .. tostring(_G.StartFarm) .. "\nAuto Ken: " .. tostring(_G.AutoKen)
+    Content = "Farm: OFF\nLevel: " .. player.Data.Level.Value
 })
 
 task.spawn(function()
     while true do
         task.wait(1)
-        local para = InfoTab:FindFirstChild("Status")
-        if para then
-            para:SetContent("Farm: " .. tostring(_G.StartFarm) .. "\nAuto Ken: " .. tostring(_G.AutoKen) .. "\nLevel: " .. player.Data.Level.Value)
-        end
+        StatusLabel:SetContent("Farm: " .. (_G.StartFarm and "ON" or "OFF") .. "\nLevel: " .. player.Data.Level.Value .. "\nMode: " .. _G.FarmMode)
     end
 end)
 
@@ -669,7 +749,11 @@ end)
 -- ========================================
 Workspace.Terrain.WaterWaveSize = 0
 Workspace.Terrain.WaterWaveSpeed = 0
-Lighting.GlobalShadows = false
 settings().Rendering.QualityLevel = "Level01"
 
-print("Turbo Lite Hub V3 loaded! Press Insert to toggle UI")
+print("Turbo Lite Hub V3 loaded! Bật Start Farm để bắt đầu farm")
+Rayfield:Notify({
+    Title = "Turbo Lite Hub",
+    Content = "Loaded! Bật Start Farm để bắt đầu",
+    Duration = 3
+})
