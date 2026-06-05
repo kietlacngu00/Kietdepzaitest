@@ -57,16 +57,16 @@ local HubScripts = {
             -- CHÈN LINK SCRIPT HOẶC CODE CỦA V3 VÀO DƯỚI DÒNG NÀY:
             loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/Kietdepzaitest/refs/heads/main/Maxlevl"))()
         end 
-    },
+    }, -- Đã sửa: Thêm dấu phẩy ở đây
     {
-    {ID = "V6", 
+        ID = "V6", 
         Name = "KIETDEPZAI HUB V6", 
         Note = "định vị và giảm lag", 
         ScriptFunction = function() 
             -- CHÈN LINK SCRIPT HOẶC CODE CỦA V3 VÀO DƯỚI DÒNG NÀY:
             loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/Kietdepzaitest/refs/heads/main/Lag"))()
         end 
-    }
+    } -- Đã sửa: Xóa bỏ các dấu ngoặc nhọn bao quanh lỗi
 }
 -- =====================================================================
 -- ⛔ KHÔNG CẦN CHỈNH SỬA PHẦN DƯỚI NÀY (HỆ THỐNG GIAO DIỆN & HIỆU ỨNG)
