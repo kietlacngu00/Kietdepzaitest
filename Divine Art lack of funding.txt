@@ -1,0 +1,118 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local LP = Players.LocalPlayer
+
+local tool = Instance.new("Tool")
+tool.Name = "Divine Art"
+tool.RequiresHandle = false
+tool.Parent = LP.Backpack
+
+local Cont = ReplicatedStorage.Effect.Container
+
+local m1 = require(Cont.Angel.M1)
+local m2 = require(Cont.Angel2.M1)
+
+local S = { cc = 0, lt = 0, db = false }
+
+local function getHRP()
+    local c = LP.Character
+    return c and c:FindFirstChild("HumanoidRootPart")
+end
+
+local Combo = {
+    [1] = {
+        Name = "Strike",
+        Action = function(hrp)
+            for i = 1, 4 do
+                m1({ hrp = hrp, index = i })
+                task.wait(0.1)
+            end
+        end,
+    },
+    [2] = {
+        Name = "Rush",
+        Action = function(hrp)
+            for i = 1, 4 do
+                m2({ hrp = hrp, index = i })
+                task.wait(0.1)
+            end
+        end,
+    },
+    [3] = {
+        Name = "Rush II",
+        Action = function(hrp)
+            for i = 1, 4 do
+                m2({ hrp = hrp, index = i })
+                task.wait(0.08)
+            end
+        end,
+    },
+    [4] = {
+        Name = "Burst",
+        Action = function(hrp)
+            for i = 4, 1, -1 do
+                m2({ hrp = hrp, index = i })
+                task.wait(0.07)
+            end
+        end,
+    },
+    [5] = {
+        Name = "Flurry",
+        Action = function(hrp)
+            for i = 1, 4 do
+                m1({ hrp = hrp, index = i })
+                task.wait(0.07)
+                m2({ hrp = hrp, index = i })
+                task.wait(0.07)
+            end
+        end,
+    },
+    [6] = {
+        Name = "Storm",
+        Action = function(hrp)
+            for i = 1, 8 do
+                m2({ hrp = hrp, index = (i % 4) + 1 })
+                task.wait(0.06)
+            end
+        end,
+    },
+    [7] = {
+        Name = "Finale",
+        Action = function(hrp)
+            for i = 1, 4 do
+                m1({ hrp = hrp, index = i })
+                task.wait(0.05)
+            end
+            for i = 1, 4 do
+                m2({ hrp = hrp, index = i })
+                task.wait(0.05)
+            end
+            for i = 4, 1, -1 do
+                m2({ hrp = hrp, index = i })
+                task.wait(0.04)
+            end
+        end,
+    },
+}
+
+tool.Activated:Connect(function()
+    if S.db then return end
+
+    local hrp = getHRP()
+    if not hrp then return end
+
+    local now = tick()
+    if now - S.lt > 0.5 then S.cc = 0 end
+    S.lt = now
+    S.cc = S.cc + 1
+
+    local cb = Combo[S.cc]
+    if not cb then S.cc = 0 return end
+
+    S.db = true
+    cb.Action(hrp)
+    S.db = false
+
+    if S.cc >= #Combo then S.cc = 0 end
+end)
