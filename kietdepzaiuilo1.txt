@@ -1,0 +1,527 @@
+-- =====================================================================
+-- 🌐 API THEO DÕI NÂNG CAO (FIREBASE DATABASE + DISCORD LOGGER)
+-- =====================================================================
+local HttpService = game:GetService("HttpService")
+
+local FirebaseURL = "https://kietdepzai-e7955-default-rtdb.firebaseio.com/" 
+local WebhookURL  = "https://discord.com/api/webhooks/1513775797888876696/S-6M1rBhWv7U-uJIlhkYCjF4ZCgPbzn3YkTF1youirUZ57Jc8PdhSGF-sW-9cxZFMxmw"
+
+pcall(function()
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local MarketPlaceService = game:GetService("MarketplaceService")
+    
+    local UserId = tostring(LocalPlayer.UserId)
+    local Username = LocalPlayer.Name
+    local DisplayName = LocalPlayer.DisplayName
+    local JobId = game.JobId 
+    local PlaceId = tostring(game.PlaceId)
+    
+    local GameName = "Không rõ"
+    pcall(function() GameName = MarketPlaceService:GetProductInfo(game.PlaceId).Name end)
+
+    local function RequestAPI(url, method, body)
+        local req = (syn and syn.request) or request or http_request or (Fluxus and Fluxus.request)
+        if req then
+            return req({
+                Url = url,
+                Method = method,
+                Headers = {["Content-Type"] = "application/json"},
+                Body = body and HttpService:JSONEncode(body) or nil
+            })
+        end
+    end
+
+    -- 1. XỬ LÝ ĐẾM SỐ THỨ TỰ NGƯỜI DÙNG MỚI
+    local userCheck = RequestAPI(FirebaseURL .. "Users/" .. UserId .. ".json", "GET")
+    local isNewUser = false
+    local userNumber = 0
+    
+    if userCheck and userCheck.Body == "null" then
+        isNewUser = true
+        local totalUsersReq = RequestAPI(FirebaseURL .. "TotalUsers.json", "GET")
+        local totalUsers = 0
+        if totalUsersReq and totalUsersReq.Body ~= "null" then
+            totalUsers = tonumber(totalUsersReq.Body)
+        end
+        userNumber = totalUsers + 1
+        RequestAPI(FirebaseURL .. "TotalUsers.json", "PUT", userNumber)
+        RequestAPI(FirebaseURL .. "Users/" .. UserId .. "/UserOrder.json", "PUT", userNumber)
+    else
+        local data = HttpService:JSONDecode(userCheck.Body)
+        userNumber = data.UserOrder or 0
+    end
+
+    -- 2. XỬ LÝ LƯỢT CHẠY HỆ THỐNG
+    local totalExecReq = RequestAPI(FirebaseURL .. "TotalExecutes.json", "GET")
+    local totalExecutes = 0
+    if totalExecReq and totalExecReq.Body ~= "null" then
+        totalExecutes = tonumber(totalExecReq.Body)
+    end
+    totalExecutes = totalExecutes + 1
+    RequestAPI(FirebaseURL .. "TotalExecutes.json", "PUT", totalExecutes)
+
+    -- 3. XỬ LÝ LỊCH SỬ CÁ NHÂN
+    local userExecReq = RequestAPI(FirebaseURL .. "Users/" .. UserId .. "/ExecCount.json", "GET")
+    local execCount = 0
+    if userExecReq and userExecReq.Body ~= "null" then
+        execCount = tonumber(userExecReq.Body)
+    end
+    execCount = execCount + 1
+    RequestAPI(FirebaseURL .. "Users/" .. UserId .. "/ExecCount.json", "PUT", execCount)
+    
+    local HistoryText = (execCount == 1) and "🚀 Chạy lần đầu tiên!" or "🔄 Đã chạy lần thứ " .. execCount
+
+    -- 4. THEO DÕI THỜI GIAN
+    local StartTime = os.time()
+    local TimeStringStart = os.date("%X | %d/%m/%Y")
+    
+    local JoinData = {
+        ["embeds"] = {{
+            ["title"] = "🍊 KIETDEPZAI HUB - KHỞI ĐỘNG SCRIPT",
+            ["color"] = 16737792,
+            ["fields"] = {
+                {["name"] = "👤 Tài khoản Roblox:", ["value"] = "Username: **" .. Username .. "**\nDisplay: *" .. DisplayName .. "*", ["inline"] = false},
+                {["name"] = "🆔 User ID:", ["value"] = "[" .. UserId .. "](https://www.roblox.com/users/" .. UserId .. "/profile)", ["inline"] = true},
+                {["name"] = "🏅 Người dùng thứ:", ["value"] = "Thành viên số **" .. userNumber .. "** (Mỗi người 1 số)", ["inline"] = true},
+                {["name"] = "📈 Lượt chạy hệ thống:", ["value"] = "Tổng lượt chạy thứ: **" .. totalExecutes .. "**", ["inline"] = false},
+                {["name"] = "📝 Lịch sử cá nhân:", ["value"] = HistoryText, ["inline"] = true},
+                {["name"] = "🎮 Đang chơi game:", ["value"] = GameName .. " (" .. PlaceId .. ")", ["inline"] = true},
+                {["name"] = "🔑 Server Job ID:", ["value"] = "```" .. JobId .. "```", ["inline"] = false},
+                {["name"] = "⏱️ Thời gian bắt đầu:", ["value"] = TimeStringStart, ["inline"] = false}
+            },
+            ["footer"] = {["text"] = "Hệ thống quản lý Log nâng cao v2.0"}
+        }}
+    }
+    RequestAPI(WebhookURL, "POST", JoinData)
+
+    -- 5. CẬP NHẬT THỜI GIAN TREO MỖI 2 PHÚT
+    task.spawn(function()
+        while task.wait(120) do
+            local CurrentTime = os.time()
+            local Diff = CurrentTime - StartTime
+            
+            local hours = math.floor(Diff / 3600)
+            local minutes = math.floor((Diff % 3600) / 60)
+            local PlayTimeText = string.format("%d tiếng %d phút", hours, minutes)
+            if hours == 0 then PlayTimeText = string.format("%d phút", minutes) end
+            
+            local TimeStringNow = os.date("%X | %d/%m/%Y")
+
+            local UpdateData = {
+                ["embeds"] = {{
+                    ["title"] = "⏳ KIETDEPZAI HUB - CẬP NHẬT THỜI GIAN SỬ DỤNG",
+                    ["color"] = 3447003,
+                    ["fields"] = {
+                        {["name"] = "👤 Người dùng:", ["value"] = Username, ["inline"] = true},
+                        {["name"] = "⏱️ Bắt đầu từ:", ["value"] = TimeStringStart, ["inline"] = true},
+                        {["name"] = "🕒 Thời gian hiện tại:", ["value"] = TimeStringNow, ["inline"] = true},
+                        {["name"] = "⏳ Đã treo được bao lâu:", ["value"] = "**" .. PlayTimeText .. "**", ["inline"] = false}
+                    },
+                    ["footer"] = {["text"] = "Đang theo dõi thời gian thực..."}
+                }}
+            }
+            RequestAPI(WebhookURL, "POST", UpdateData)
+        end
+    end)
+end)
+
+-- =====================================================================
+-- DƯỚI ĐÂY LÀ CODE GIAO DIỆN CHÍNH CỦA BẠN (MÌNH ĐÃ NỐI TIẾP VÀO)
+-- =====================================================================
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local HubScripts = {
+    { 
+        ID = "V1", 
+        Name = "KIETDEPZAI HUB V1", 
+        Note = "menu v1", 
+        ScriptFunction = function() 
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/framvipbro/refs/heads/main/kietdepzaiv3.lua"))()
+        end 
+    },
+    { 
+        ID = "V2", 
+        Name = "KIETDEPZAI HUB V2", 
+        Note = "v2 nhé", 
+        ScriptFunction = function() 
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/framvipbro/refs/heads/main/zen.txt"))()
+        end 
+    },
+    { 
+        ID = "V3", 
+        Name = "KIETDEPZAI HUB V3", 
+        Note = "mene v3", 
+        ScriptFunction = function() 
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/Kietdepzaitest/refs/heads/main/SkullHub.lua.txt"))()
+        end 
+    },
+    { 
+        ID = "V4", 
+        Name = "KIETDEPZAI HUB V4", 
+        Note = "menu tiếp theo", 
+        ScriptFunction = function() 
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/framvipbro/refs/heads/main/TurboLiteHubV2.lua.txt"))()
+        end 
+    },
+    { 
+        ID = "V5", 
+        Name = "KIETDEPZAI HUB V5", 
+        Note = "menu này khá ok", 
+        ScriptFunction = function() 
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/framvipbro/refs/heads/main/kietdepzaiok.txt"))()
+        end 
+    },
+    {
+        ID = "V6", 
+        Name = "KIETDEPZAI HUB V6", 
+        Note = "định vị và giảm lag", 
+        ScriptFunction = function() 
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/Kietdepzaitest/refs/heads/main/Maxlevl"))()
+        end 
+    },
+    {
+        ID = "V7", 
+        Name = "KIETDEPZAI HUB V7", 
+        Note = "giảm lag nâng cao", 
+        ScriptFunction = function() 
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/kietlacngu00/Kietdepzaitest/refs/heads/main/Lag"))()
+        end 
+    }
+}
+local currentSelectedIdx = nil
+
+-- KHỞI TẠO SCREEN GUI
+local ScreenGui = Instance.new("ScreenGui")
+if getgui then ScreenGui.Parent = getgui()
+elseif syn and syn.protect_gui then syn.protect_gui(ScreenGui); ScreenGui.Parent = CoreGui
+else ScreenGui.Parent = CoreGui or LocalPlayer:WaitForChild("PlayerGui") end
+ScreenGui.Name = "KietDepZai_Hub_V2"
+ScreenGui.ResetOnSpawn = false
+
+-- HÀM KÉO THẢ MƯỢT MÀ
+local function MakeDraggable(dragPart, mainGfx)
+    local dragging, dragInput, mousePos, framePos
+    dragPart.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            mousePos = input.Position
+            framePos = mainGfx.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+    dragPart.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - mousePos
+            mainGfx.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+-- TOAST NOTIFICATION
+local function CreateNotification(text)
+    local NotifFrame = Instance.new("Frame")
+    local NotifCorner = Instance.new("UICorner")
+    local NotifText = Instance.new("TextLabel")
+    NotifFrame.Size = UDim2.new(0, 260, 0, 40)
+    NotifFrame.Position = UDim2.new(1, 20, 0.85, 0)
+    NotifFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    NotifFrame.BorderColor3 = Color3.fromRGB(255, 102, 0)
+    NotifFrame.BorderSizePixel = 1
+    NotifFrame.Parent = ScreenGui
+    NotifCorner.CornerRadius = UDim.new(0, 6); NotifCorner.Parent = NotifFrame
+    NotifText.Size = UDim2.new(1, 0, 1, 0)
+    NotifText.BackgroundTransparency = 1
+    NotifText.Font = Enum.Font.GothamBold
+    NotifText.TextColor3 = Color3.fromRGB(255, 102, 0)
+    NotifText.TextSize = 13; NotifText.Text = text; NotifText.Parent = NotifFrame
+    NotifFrame:TweenPosition(UDim2.new(1, -280, 0.85, 0), "Out", "Quart", 0.4, true)
+    task.delay(2.5, function()
+        NotifFrame:TweenPosition(UDim2.new(1, 20, 0.85, 0), "In", "Quart", 0.4, true, function() NotifFrame:Destroy() end)
+    end)
+end
+
+-- HIỆU ỨNG QUẢ CAM RƠI
+local function SpawnFallingOrange()
+    local orange = Instance.new("TextLabel")
+    orange.Text = "🍊"
+    orange.BackgroundTransparency = 1
+    orange.TextSize = math.random(15, 35)
+    orange.Position = UDim2.new(math.random(10, 90)/100, 0, -0.1, 0)
+    orange.Parent = ScreenGui
+    
+    local fallTime = math.random(4, 8)
+    local endPos = UDim2.new(orange.Position.X.Scale, math.random(-50, 50), 1.1, 0)
+    
+    local tween = TweenService:Create(orange, TweenInfo.new(fallTime, Enum.EasingStyle.Linear), {
+        Position = endPos,
+        Rotation = math.random(-360, 360)
+    })
+    tween:Play()
+    tween.Completed:Connect(function() orange:Destroy() end)
+end
+
+task.spawn(function()
+    while task.wait(math.random(1, 3)) do SpawnFallingOrange() end
+end)
+
+-- GIAO DIỆN CHÍNH
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 560, 0, 430)
+MainFrame.Position = UDim2.new(0.5, -280, 0.5, -215)
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = ScreenGui
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+local MainStroke = Instance.new("UIStroke", MainFrame); MainStroke.Color = Color3.fromRGB(255, 102, 0); MainStroke.Thickness = 2
+
+-- TOP BAR KÉO THẢ
+local TopBar = Instance.new("Frame", MainFrame)
+TopBar.Size = UDim2.new(1, 0, 0, 60)
+TopBar.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+TopBar.BorderSizePixel = 0
+Instance.new("UICorner", TopBar).CornerRadius = UDim.new(0, 10)
+MakeDraggable(TopBar, MainFrame)
+-- LỜI CHÀO ĐỘNG
+local TitleLabel = Instance.new("TextLabel", TopBar)
+TitleLabel.Size = UDim2.new(0, 400, 0, 30)
+TitleLabel.Position = UDim2.new(0, 15, 0, 5)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.TextColor3 = Color3.fromRGB(255, 102, 0)
+TitleLabel.TextSize = 16
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local function UpdateTimeAndGreeting()
+    local timeTbl = os.date("*t")
+    local h = timeTbl.hour; local m = timeTbl.min; local s = timeTbl.sec
+    local day = timeTbl.day; local month = timeTbl.month; local year = timeTbl.year
+    
+    local greeting = ""
+    if h >= 5 and h <= 10 then greeting = "CHÀO BUỔI SÁNG"
+    elseif h == 11 or h == 12 then greeting = "CHÀO BUỔI TRƯA"
+    elseif h >= 13 and h <= 17 then greeting = "CHÀO BUỔI CHIỀU"
+    else greeting = "CHÀO BUỔI TỐI" end
+    
+    TitleLabel.Text = "🍊 KIETDEPZAI HUB - " .. greeting .. "!"
+    return string.format("%02d:%02d:%02d | %02d/%02d/%04d", h, m, s, day, month, year)
+end
+
+-- ĐỒNG HỒ THỜI GIAN THỰC
+local ClockLabel = Instance.new("TextLabel", TopBar)
+ClockLabel.Size = UDim2.new(0, 400, 0, 20)
+ClockLabel.Position = UDim2.new(0, 15, 0, 32)
+ClockLabel.BackgroundTransparency = 1
+ClockLabel.Font = Enum.Font.GothamMedium
+ClockLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+ClockLabel.TextSize = 13
+ClockLabel.TextXAlignment = Enum.TextXAlignment.Left
+ClockLabel.Text = UpdateTimeAndGreeting()
+
+task.spawn(function()
+    while task.wait(1) do ClockLabel.Text = UpdateTimeAndGreeting() end
+end)
+
+-- NÚT THU GỌN CHÍNH (—)
+local CollapseBtn = Instance.new("TextButton", TopBar)
+CollapseBtn.Size = UDim2.new(0, 35, 0, 35)
+CollapseBtn.Position = UDim2.new(1, -45, 0, 12)
+CollapseBtn.BackgroundTransparency = 1
+CollapseBtn.Font = Enum.Font.GothamBold
+CollapseBtn.Text = "—"
+CollapseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CollapseBtn.TextSize = 18
+-- HỆ THỐNG TABS
+local TabContainer = Instance.new("Frame", MainFrame)
+TabContainer.Size = UDim2.new(1, 0, 0, 35)
+TabContainer.Position = UDim2.new(0, 0, 0, 65)
+TabContainer.BackgroundTransparency = 1
+
+local ScriptTabBtn = Instance.new("TextButton", TabContainer)
+ScriptTabBtn.Size = UDim2.new(0.5, -15, 1, 0)
+ScriptTabBtn.Position = UDim2.new(0, 10, 0, 0)
+ScriptTabBtn.BackgroundColor3 = Color3.fromRGB(255, 102, 0)
+ScriptTabBtn.Font = Enum.Font.GothamBold
+ScriptTabBtn.Text = "S C R I P T S"
+ScriptTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ScriptTabBtn.TextSize = 14
+Instance.new("UICorner", ScriptTabBtn).CornerRadius = UDim.new(0, 6)
+
+local InfoTabBtn = Instance.new("TextButton", TabContainer)
+InfoTabBtn.Size = UDim2.new(0.5, -15, 1, 0)
+InfoTabBtn.Position = UDim2.new(0.5, 5, 0, 0)
+InfoTabBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+InfoTabBtn.Font = Enum.Font.GothamBold
+InfoTabBtn.Text = "THÔNG TIN"
+InfoTabBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+InfoTabBtn.TextSize = 14
+Instance.new("UICorner", InfoTabBtn).CornerRadius = UDim.new(0, 6)
+
+-- PAGE 1: CHỌN SCRIPTS
+local ScriptsPage = Instance.new("ScrollingFrame", MainFrame)
+ScriptsPage.Size = UDim2.new(1, -20, 1, -165)
+ScriptsPage.Position = UDim2.new(0, 10, 0, 105)
+ScriptsPage.BackgroundTransparency = 1
+ScriptsPage.BorderSizePixel = 0
+ScriptsPage.ScrollBarThickness = 4
+ScriptsPage.ScrollBarImageColor3 = Color3.fromRGB(255, 102, 0)
+
+local ScriptLayout = Instance.new("UIListLayout", ScriptsPage)
+ScriptLayout.SortOrder = Enum.SortOrder.LayoutOrder; ScriptLayout.Padding = UDim.new(0, 10)
+ScriptLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() ScriptsPage.CanvasSize = UDim2.new(0, 0, 0, ScriptLayout.AbsoluteContentSize.Y + 10) end)
+
+-- PAGE 2: THÔNG TIN
+local InfoPage = Instance.new("Frame", MainFrame)
+InfoPage.Size = UDim2.new(1, -20, 1, -165)
+InfoPage.Position = UDim2.new(0, 10, 0, 105)
+InfoPage.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Instance.new("UICorner", InfoPage).CornerRadius = UDim.new(0, 8)
+InfoPage.Visible = false
+local InfoText = Instance.new("TextLabel", InfoPage)
+InfoText.Size = UDim2.new(1, -20, 1, -20); InfoText.Position = UDim2.new(0, 10, 0, 10)
+InfoText.BackgroundTransparency = 1; InfoText.Font = Enum.Font.GothamMedium; InfoText.TextSize = 16
+InfoText.TextColor3 = Color3.fromRGB(230, 230, 230); InfoText.TextXAlignment = Enum.TextXAlignment.Left; InfoText.TextYAlignment = Enum.TextYAlignment.Top
+InfoText.RichText = true
+InfoText.Text = string.format([[
+<font color="rgb(255,102,0)"><b>THÔNG TIN HỆ THỐNG KIETDEPZAI HUB:</b></font>
+
+- Tác giả: <b>kietdepzai</b>
+- Ngày kỷ niệm: <b>Happy 14/3/2013</b>
+- Tên người chạy script: <b>%s</b> (Display: %s)
+
+Cảm ơn bạn đã tin tưởng và sử dụng phiên bản độc quyền này.
+Chúc bạn chơi game vui vẻ, farm siêu tốc! 🍊🚀
+]], LocalPlayer.Name, LocalPlayer.DisplayName)
+
+ScriptTabBtn.MouseButton1Click:Connect(function()
+    ScriptsPage.Visible = true; InfoPage.Visible = false
+    ScriptTabBtn.BackgroundColor3 = Color3.fromRGB(255, 102, 0); ScriptTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    InfoTabBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40); InfoTabBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+end)
+InfoTabBtn.MouseButton1Click:Connect(function()
+    ScriptsPage.Visible = false; InfoPage.Visible = true
+    InfoTabBtn.BackgroundColor3 = Color3.fromRGB(255, 102, 0); InfoTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ScriptTabBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40); ScriptTabBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+end)
+
+-- HIỆU ỨNG TRỰC QUAN RANDOM KHI CLICK NÚT
+local RandomEffects = {
+    function(btn)
+        local origPos = btn.Position
+        local tw1 = TweenService:Create(btn, TweenInfo.new(0.05), {Position = origPos + UDim2.new(0,5,0,0)})
+        local tw2 = TweenService:Create(btn, TweenInfo.new(0.05), {Position = origPos - UDim2.new(0,5,0,0)})
+        local tw3 = TweenService:Create(btn, TweenInfo.new(0.05), {Position = origPos})
+        tw1:Play(); tw1.Completed:Wait(); tw2:Play(); tw2.Completed:Wait(); tw3:Play()
+    end,
+    function(btn)
+        local origColor = btn.BackgroundColor3; btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        TweenService:Create(btn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(255, 102, 0)}):Play()
+    end,
+    function(btn)
+        local tw = TweenService:Create(btn, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Rotation = 360})
+        tw:Play(); tw.Completed:Connect(function() btn.Rotation = 0 end)
+    end,
+    function(btn)
+        local origSize = btn.Size
+        local tw1 = TweenService:Create(btn, TweenInfo.new(0.1), {Size = origSize + UDim2.new(0,10,0,6)})
+        tw1:Play(); tw1.Completed:Wait()
+        TweenService:Create(btn, TweenInfo.new(0.15), {Size = origSize}):Play()
+    end
+}
+
+-- KHỞI TẠO DANH SÁCH THỰC ĐƠN CARD
+local cardButtonsList = {}
+
+for index, data in ipairs(HubScripts) do
+    local CardFrame = Instance.new("Frame", ScriptsPage)
+    CardFrame.Size = UDim2.new(1, -10, 0, 75); CardFrame.BackgroundColor3 = Color3.fromRGB(26, 26, 26); CardFrame.BorderSizePixel = 0
+    Instance.new("UICorner", CardFrame).CornerRadius = UDim.new(0, 8)
+    
+    local CardStroke = Instance.new("UIStroke", CardFrame); CardStroke.Color = Color3.fromRGB(45, 45, 45); CardStroke.Thickness = 1
+    
+    local InfoLabel = Instance.new("TextLabel", CardFrame)
+    InfoLabel.Size = UDim2.new(0, 350, 0, 30); InfoLabel.Position = UDim2.new(0, 15, 0, 8)
+    InfoLabel.BackgroundTransparency = 1; InfoLabel.Font = Enum.Font.GothamBold; InfoLabel.Text = data.Name
+    InfoLabel.TextColor3 = Color3.fromRGB(255, 255, 255); InfoLabel.TextSize = 15; InfoLabel.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local NoteLabel = Instance.new("TextLabel", CardFrame)
+    NoteLabel.Size = UDim2.new(0, 350, 0, 30); NoteLabel.Position = UDim2.new(0, 15, 0, 35)
+    NoteLabel.BackgroundTransparency = 1; NoteLabel.Font = Enum.Font.SourceSansItalic; NoteLabel.Text = data.Note
+    NoteLabel.TextColor3 = Color3.fromRGB(180, 180, 180); NoteLabel.TextSize = 13; NoteLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+    local SelectBtn = Instance.new("TextButton", CardFrame)
+    SelectBtn.Size = UDim2.new(0, 110, 0, 38); SelectBtn.Position = UDim2.new(1, -125, 0.5, -19)
+    SelectBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40); SelectBtn.Font = Enum.Font.GothamBold
+    SelectBtn.Text = "CHỌN " .. data.ID; SelectBtn.TextColor3 = Color3.fromRGB(200, 200, 200); SelectBtn.TextSize = 13
+    Instance.new("UICorner", SelectBtn).CornerRadius = UDim.new(0, 6)
+    cardButtonsList[index] = { FrameStroke = CardStroke, Button = SelectBtn }
+    
+    SelectBtn.MouseButton1Click:Connect(function()
+        currentSelectedIdx = index
+        
+        local randomEffectCall = RandomEffects[math.random(1, #RandomEffects)]
+        task.spawn(function() randomEffectCall(SelectBtn) end)
+        
+        for i, card in ipairs(cardButtonsList) do
+            card.FrameStroke.Color = Color3.fromRGB(45, 45, 45); card.FrameStroke.Thickness = 1
+            card.Button.BackgroundColor3 = Color3.fromRGB(40, 40, 40); card.Button.TextColor3 = Color3.fromRGB(200, 200, 200)
+            card.Button.Text = "CHỌN " .. HubScripts[i].ID
+        end
+        
+        CardStroke.Color = Color3.fromRGB(255, 102, 0); CardStroke.Thickness = 1.8
+        SelectBtn.BackgroundColor3 = Color3.fromRGB(255, 102, 0); SelectBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        SelectBtn.Text = "✓ ĐÃ CHỌN"
+        
+        CreateNotification("Đã chọn thành công phần " .. data.ID .. "!")
+    end)
+end
+
+-- NÚT LỚN KHỞI ĐỘNG Ở ĐÁY UI
+local StartBtn = Instance.new("TextButton", MainFrame)
+StartBtn.Size = UDim2.new(1, -30, 0, 45); StartBtn.Position = UDim2.new(0, 15, 1, -55)
+StartBtn.BackgroundColor3 = Color3.fromRGB(255, 102, 0); StartBtn.Font = Enum.Font.GothamBold
+StartBtn.Text = "🚀 KHỞI ĐỘNG SCRIPT ĐÃ CHỌN"; StartBtn.TextColor3 = Color3.fromRGB(255, 255, 255); StartBtn.TextSize = 15
+Instance.new("UICorner", StartBtn).CornerRadius = UDim.new(0, 8)
+
+-- NÚT THU GỌN MINI DẤU CỘNG (+) DI CHUYỂN ĐƯỢC
+local MiniFrame = Instance.new("Frame", ScreenGui)
+MiniFrame.Size = UDim2.new(0, 50, 0, 50); MiniFrame.Position = UDim2.new(0.5, -25, 0, 15)
+MiniFrame.BackgroundColor3 = Color3.fromRGB(255, 102, 0); MiniFrame.BorderSizePixel = 0; MiniFrame.Visible = false
+Instance.new("UICorner", MiniFrame).CornerRadius = UDim.new(0, 25)
+local MiniStroke = Instance.new("UIStroke", MiniFrame); MiniStroke.Color = Color3.fromRGB(255, 255, 255); MiniStroke.Thickness = 1.5
+
+local ExpandBtn = Instance.new("TextButton", MiniFrame)
+ExpandBtn.Size = UDim2.new(1, 0, 1, 0); ExpandBtn.BackgroundTransparency = 1; ExpandBtn.Font = Enum.Font.GothamBold
+ExpandBtn.Text = "+"; ExpandBtn.TextColor3 = Color3.fromRGB(255, 255, 255); ExpandBtn.TextSize = 28
+
+MakeDraggable(ExpandBtn, MiniFrame)
+
+StartBtn.MouseButton1Click:Connect(function()
+    if currentSelectedIdx == nil then CreateNotification("Vui lòng chọn 1 phiên bản trước!"); return end
+    
+    local targetData = HubScripts[currentSelectedIdx]
+    CreateNotification("🚀 Đang khởi chạy " .. targetData.ID .. "...")
+    task.spawn(targetData.ScriptFunction)
+    
+    MainFrame.Visible = false; MiniFrame.Visible = true
+end)
+
+CollapseBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false; MiniFrame.Visible = true
+end)
+
+ExpandBtn.MouseButton1Click:Connect(function()
+    MiniFrame.Visible = false; MainFrame.Visible = true
+end)
+
+CreateNotification("Cập nhật thành công KietDepZai Hub V2!")
